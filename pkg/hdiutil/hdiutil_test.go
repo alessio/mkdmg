@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"go-make-dmg/pkg/hdiutil"
+	"github.com/alessio/mkdmg/pkg/hdiutil"
 )
 
 func TestInit(t *testing.T) {

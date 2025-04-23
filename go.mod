@@ -1,4 +1,4 @@
-module go-make-dmg
+module github.com/alessio/mkdmg
 
 go 1.24
 

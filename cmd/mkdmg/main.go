@@ -55,7 +55,7 @@ func (i *fmtFlag) buildArgs() []string {
 
 func init() {
 	pflag.CommandLine.SetOutput(os.Stderr)
-	log.SetPrefix("go-make-dmg:")
+	log.SetPrefix("mkdmg:")
 	log.SetFlags(0)
 	log.SetOutput(pflag.CommandLine.Output())
 
@@ -68,7 +68,7 @@ func init() {
 	pflag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
 	pflag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "V", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
 
-	verboseLog = log.New(io.Discard, "go-make-dmg: ", 0)
+	verboseLog = log.New(io.Discard, "mkdmg: ", 0)
 }
 
 func main() {
