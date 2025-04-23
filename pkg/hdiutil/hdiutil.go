@@ -48,10 +48,10 @@ func (r *Runner) Setup() error {
 type Runner struct {
 	*Config
 
-	volNameOpts []string
 	formatOpts  []string
 	sizeOpts    []string
 	fsOpts      []string
+	volNameOpt  string
 	signOpt     string
 	notarizeOpt string
 
@@ -176,8 +176,7 @@ func (r *Runner) createTempImage() error {
 	args := slices.Concat([]string{"create"},
 		r.fsOpts,
 		r.sizeOpts,
-		r.volNameOpts,
-		[]string{"-format", "UDRW", "-srcfolder", r.srcDir, r.tmpDmg},
+		[]string{"-format", "UDRW", "-volname", r.volNameOpt, "-srcfolder", r.srcDir, r.tmpDmg},
 	)
 
 	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
@@ -185,7 +184,7 @@ func (r *Runner) createTempImage() error {
 
 func (r *Runner) createTempImageSandboxSafe() error {
 	args1 := r.setHdiutilVerbosity([]string{"makehybrid",
-		"-default-volume-name", r.VolumeName, "-hfs", "-r", r.tmpDmg, r.srcDir})
+		"-default-volume-name", r.volNameOpt, "-hfs", "-r", r.tmpDmg, r.srcDir})
 	if err := r.runHdiutil(args1...); err != nil {
 		return err
 	}
@@ -231,9 +230,9 @@ func (r *Runner) init() error {
 	// generate a volume name if empty
 	if len(r.Config.VolumeName) == 0 {
 		vname := strings.TrimSuffix(filepath.Base(r.Config.OutputPath), ".dmg")
-		r.volNameOpts = []string{"-volname", vname}
+		r.volNameOpt = vname
 	} else {
-		r.volNameOpts = []string{"-volname", r.Config.VolumeName}
+		r.volNameOpt = r.Config.VolumeName
 	}
 
 	r.formatOpts = r.Config.imageFormatToArgs()
