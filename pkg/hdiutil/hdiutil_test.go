@@ -40,8 +40,8 @@ func TestInit(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-{"sandbox_safe_with_volume_size_should_fail", args{&configs[0]}, true},
- 		{"valid_config_should_succeed",        args{&configs[1]}, false},
+		{"sandbox_safe_with_volume_size_should_fail", args{&configs[0]}, true},
+		{"valid_config_should_succeed", args{&configs[1]}, false},
 	}
 
 	for _, tt := range tests {

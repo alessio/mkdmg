@@ -63,6 +63,14 @@ type Runner struct {
 	finalDmg string
 
 	permFixed bool
+
+	cleanupFuncs []func()
+}
+
+func (r *Runner) Cleanup() {
+	for _, f := range r.cleanupFuncs {
+		f()
+	}
 }
 
 func (r *Runner) CreateDstDMG() error {
@@ -231,14 +239,22 @@ func (r *Runner) init() error {
 	if r.Config.VolumeSizeMb > 0 {
 		r.sizeOpts = []string{"-size", fmt.Sprintf("%dm", r.Config.VolumeSizeMb)}
 	}
-	
+
 	// create a working directory
 	tmpDir, err := os.MkdirTemp("", "mkdmg-")
 	if err != nil {
 		return fmt.Errorf("%v: %w", ErrCreateDir, err)
 	}
-
 	r.tmpDir = tmpDir
+
+	r.cleanupFuncs = []func(){}
+	r.cleanupFuncs = append(r.cleanupFuncs, func() {
+		if r.tmpDir != "" {
+			verboseLog.Println("Removing temporary directory: ", r.tmpDir)
+			_ = os.RemoveAll(r.tmpDir)
+		}
+	})
+
 	r.tmpDmg = filepath.Join(tmpDir, "temp.dmg")
 	// signingIdentity
 	r.signOpt = r.Config.SigningIdentity
