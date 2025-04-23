@@ -63,6 +63,7 @@ type Runner struct {
 
 	simulate bool
 
+	permFixed    bool
 	cleanupFuncs []func()
 }
 
@@ -95,12 +96,27 @@ func (r *Runner) DetachDiskImage() error {
 	return r.runHdiutil("detach", r.mountDir)
 }
 
+func (r *Runner) Bless() error {
+	r.fixPermissions()
+	if !r.Config.Bless {
+		return nil
+	}
+
+	if r.SandboxSafe {
+		verboseLog.Println("Skipping blessing on sandbox safe images")
+		return nil
+	}
+
+	return runCommand("bless", "--folder", r.mountDir)
+}
+
 func (r *Runner) FinalizeDMG() error {
-	args := slices.Concat(
+	r.fixPermissions()
+	return r.runHdiutil(r.setHdiutilVerbosity(slices.Concat(
 		[]string{"convert", r.tmpDmg},
 		r.formatOpts,
-		[]string{"-o", r.finalDmg})
-	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
+		[]string{"-o", r.finalDmg}),
+	)...)
 }
 
 func (r *Runner) CodesignFinalDMG() error {
@@ -228,6 +244,21 @@ func (r *Runner) init() error {
 	r.signOpt = r.Config.SigningIdentity
 
 	return nil
+}
+
+func (r *Runner) fixPermissions() {
+	if r.permFixed {
+		return
+	}
+
+	verboseLog.Println("Fixing permissions")
+	if err := runCommand("chmod", []string{
+		"-Rf", "go-w", r.mountDir,
+	}...); err != nil {
+		verboseLog.Printf("chmod failed: %v", err)
+	}
+
+	r.permFixed = true
 }
 
 func (r *Runner) runHdiutil(args ...string) error {

@@ -14,6 +14,7 @@ var (
 	volumeName      string
 	size            int64
 	verbose         bool
+	bless           bool
 	signingIdentity string
 	apfsFs          bool
 	sandboxSafe     bool

@@ -10,6 +10,7 @@ type Config struct {
 	VolumeName      string
 	VolumeSizeMb    int64
 	SandboxSafe     bool
+	Bless           bool
 	FileSystem      string
 	SigningIdentity string
 	ImageFormat     string
