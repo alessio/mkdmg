@@ -1,63 +1,50 @@
 package hdiutil
 
 import (
-	"fmt"
+	"path/filepath"
 	"strings"
 )
 
-type FileSystemType string
-
-const (
-	HFSPlus FileSystemType = "HFS+"
-	APFS    FileSystemType = "APFS"
-)
-
 type Config struct {
-	VolumeName      string
-	VolumeSizeMb    int64
-	SandboxSafe     bool
-	FileSystem      string
-	SigningIdentity string
-	ImageFormat     string
+	VolumeName          string
+	VolumeSizeMb        int64
+	SandboxSafe         bool
+	Bless               bool
+	FileSystem          string
+	SigningIdentity     string
+	NotarizeCredentials string
+	ImageFormat         string
 
-	HDIUtilVerbose bool
-	HDIUtilQuiet   bool
+	HDIUtilVerbosity int
 
 	OutputPath string
 	SourceDir  string
 
-	Verbose bool
+	Simulate bool
 }
 
-type optsType struct {
-	*Config
-
-	volNameOpts []string
-	formatOpts  []string
-	sizeOpts    []string
-	fsOpts      []string
-
-	tmpDir   string
-	tmpDmg   string
-	finalDmg string
-
-	signOpt string
-
-	hdiutilOpts []string
-}
-
-func (o *optsType) codesignFinalDMG(finalDMGPath string) error {
-	args := []string{"-s", o.signOpt, finalDMGPath}
-	if err := runCommand("codesign", args...); err != nil {
-		return fmt.Errorf("codesign command failed: %v", err)
+func (c *Config) validate() error {
+	if len(c.SourceDir) == 0 {
+		return ErrInvSourceDir
 	}
 
-	if err := runCommand("codesign",
-		"--verify", "--deep", "--strict", "--verbose=2", finalDMGPath); err != nil {
-		return fmt.Errorf("the signature seems invalid: %v", err)
+	if filepath.Ext(c.OutputPath) != ".dmg" {
+		return ErrImageFileExt
 	}
 
-	verboseLog.Println("codesign complete")
+	if len(c.imageFormatToArgs()) == 0 {
+		return ErrInvFormatOpt
+	}
+
+	if len(c.filesystemToArgs()) == 0 {
+		return ErrInvFilesystemOpt
+	}
+
+	// sandbox safe and APFS are mutually exclusive
+	if c.SandboxSafe && strings.ToUpper(c.FileSystem) == "APFS" {
+		return ErrSandboxAPFS
+	}
+
 	return nil
 }
 
