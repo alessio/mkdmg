@@ -13,102 +13,68 @@ import (
 )
 
 var (
+	ErrInvSourceDir     = errors.New("invalid source directory")
+	ErrInvFormatOpt     = errors.New("invalid image format")
+	ErrInvFilesystemOpt = errors.New("invalid image filesystem")
+	ErrCreateDir        = errors.New("couldn't create directory")
+	ErrImageFileExt     = errors.New("output file must have a .dmg extension")
+	ErrMountImage       = errors.New("couldn't attach disk image")
+	ErrSignIdNotFound   = errors.New("signing identity not found")
+	ErrCodesignFailed   = errors.New("codesign command failed")
+)
+
+var (
 	verboseLog *log.Logger
-	inst       *optsType
 )
 
 func init() {
 	verboseLog = log.New(io.Discard, "hdiutil:", 0)
-	inst = nil
 }
 
 func SetLogWriter(w io.Writer) {
 	verboseLog.SetOutput(w)
 }
 
-func Init(c *Config) error {
-	o := &optsType{Config: c}
-
-	// Validate destination pathname
-	if filepath.Ext(c.OutputPath) != ".dmg" {
-		return ErrImageFileExt
-	}
-
-	o.finalDmg = c.OutputPath
-
-	// generate a volume name if empty
-	if len(c.VolumeName) == 0 {
-		vname := strings.TrimSuffix(filepath.Base(c.OutputPath), ".dmg")
-		o.volNameOpts = []string{"-volname", vname}
-	} else {
-		o.volNameOpts = []string{"-volname", c.VolumeName}
-	}
-
-	// validate image format
-	if v := c.imageFormatToArgs(); len(v) > 0 {
-		o.formatOpts = v
-	} else {
-		return ErrInvFormatOpt
-	}
-
-	// validate filesystem
-	if v := c.filesystemToArgs(); len(v) > 0 {
-		o.fsOpts = v
-	} else {
-		return ErrInvFilesystemOpt
-	}
-
-	// check custom size if it's passed
-	if c.VolumeSizeMb > 0 {
-		o.sizeOpts = []string{"-size", fmt.Sprintf("%dm", c.VolumeSizeMb)}
-	}
-
-	// signingIdentity
-	o.signOpt = c.SigningIdentity
-
-	// create working directory
-	tmpDir, err := os.MkdirTemp("", "mkdmg-")
-	if err != nil {
-		return fmt.Errorf("%v: %w", ErrCreateDir, err)
-	}
-	o.tmpDir = tmpDir
-	o.tmpDmg = filepath.Join(tmpDir, "temp.dng")
-
-	inst = o
-	return nil
+func New(c *Config) *Runner {
+	return &Runner{Config: c}
 }
 
-func (o *optsType) createTempImage() error {
-	args := slices.Concat([]string{"create"}, o.filesystemToArgs(), o.sizeOpts)
-
-	args = append(args, "-format", "UDRW", "-volname", o.VolumeName,
-		"-quiet", "-srcfolder", o.SourceDir, o.tmpDir,
-	)
-
-	return runCommand("hdiutil", args...)
+func (r *Runner) Setup() error {
+	return r.init()
 }
 
-func (o *optsType) createTempImageSandboxSafe() error {
-	args1 := []string{"makehybrid", "-quiet", "-default-volume-name", o.VolumeName,
-		"-hfs", "-o", o.tmpDmg, o.SourceDir}
-	if err := runCommand("hdiutil", args1...); err != nil {
-		return err
+type Runner struct {
+	*Config
+
+	volNameOpts []string
+	formatOpts  []string
+	sizeOpts    []string
+	fsOpts      []string
+
+	srcDir   string
+	tmpDir   string
+	tmpDmg   string
+	finalDmg string
+
+	signOpt string
+
+	hdiutilOpts []string
+
+	simulate bool
+
+	cleanupFuncs []func()
+}
+
+func (r *Runner) CreateDstDMG() error {
+	if r.Config.SandboxSafe {
+		return r.createTempImageSandboxSafe()
 	}
 
-	args2 := []string{"convert", "-format", "UDRW", "-ov", "-o", o.tmpDmg, o.tmpDmg}
-	return runCommand("hdiutil", args2...)
+	return r.createTempImage()
 }
 
-func (o *optsType) CreateDstDMG() error {
-	if o.Config.SandboxSafe {
-		return o.createTempImageSandboxSafe()
-	}
-
-	return o.createTempImage()
-}
-
-func (o *optsType) AttachDiskImage() (string, error) {
-	output, err := runCommandOutput("hdiutil", "attach", "-nobrowse", "-noverify", o.tmpDmg)
+func (r *Runner) AttachDiskImage() (string, error) {
+	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
 	if err != nil {
 		return "",
 			fmt.Errorf("%w: %s", ErrMountImage, output)
@@ -124,8 +90,155 @@ func (o *optsType) AttachDiskImage() (string, error) {
 	return "", fmt.Errorf("%w: couldn't find mount point: %q", ErrMountImage, output)
 }
 
-func (o *optsType) DetachDiskImage(mountPoint string) error {
-	return runCommand("hdiutil", "detach", mountPoint)
+func (r *Runner) DetachDiskImage(mountPoint string) error {
+	return r.runHdiutil("detach", mountPoint)
+}
+
+func (r *Runner) FinalizeDMG() error {
+	args := slices.Concat(
+		[]string{"convert", r.tmpDmg},
+		r.formatOpts,
+		[]string{r.tmpDmg, r.finalDmg})
+	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
+}
+
+func (r *Runner) CodesignFinalDMG() error {
+	if len(r.signOpt) == 0 {
+		return ErrSignIdNotFound
+	}
+
+	if err := runCommand("codesign", "-s", r.signOpt, r.finalDmg); err != nil {
+		return fmt.Errorf("%w: codesign command failed: %v", ErrCodesignFailed, err)
+	}
+
+	if err := runCommand("codesign",
+		"--verify", "--deep", "--strict", "--verbose=2", r.finalDmg); err != nil {
+		return fmt.Errorf("%w: the signature seems invalid: %v", ErrCodesignFailed, err)
+	}
+
+	verboseLog.Println("codesign complete")
+	return nil
+}
+
+func (r *Runner) createTempImage() error {
+	args := slices.Concat([]string{"create"},
+		r.filesystemToArgs(),
+		r.sizeOpts,
+		[]string{
+			"-format", "UDRW", "-volname", r.VolumeName, "-srcfolder", r.srcDir, r.tmpDir},
+	)
+
+	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
+}
+
+func (r *Runner) createTempImageSandboxSafe() error {
+	args1 := r.setHdiutilVerbosity([]string{"makehybrid",
+		"-default-volume-name", r.VolumeName, "-hfs", "-r", r.tmpDmg, r.srcDir})
+	if err := r.runHdiutil(args1...); err != nil {
+		return err
+	}
+
+	args2 := r.setHdiutilVerbosity([]string{"convert",
+		"-format", "UDRW", "-ov", "-r", r.tmpDmg, r.tmpDmg})
+
+	return r.runHdiutil(args2...)
+}
+
+func (r *Runner) runHdiutil(args ...string) error {
+	if r.Simulate {
+		verboseLog.Println("Simulating hdiutil command: ", args)
+		return nil
+	}
+	return runCommand("hdiutil", args...)
+}
+
+func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
+	if r.Simulate {
+		verboseLog.Println("Simulating hdiutil command: ", args)
+		return "", nil
+	}
+
+	return runCommandOutput("hdiutil", args...)
+}
+
+func (r *Runner) setHdiutilVerbosity(args []string) []string {
+	if len(args) == 0 || r.HDIUtilVerbosity == 0 {
+		return args
+	}
+
+	var val string
+
+	switch r.HDIUtilVerbosity {
+	case 1:
+		val = "-quiet"
+	case 2:
+		val = "-verbose"
+	default:
+		val = "-debug"
+	}
+
+	switch args[0] {
+	case "create", "makehybrid", "convert":
+		return slices.Insert(args, 1, val)
+	default:
+		return slices.Insert(args, 0, val)
+	}
+}
+
+func (r *Runner) init() error {
+	if len(r.Config.SourceDir) == 0 {
+		return ErrInvSourceDir
+	}
+
+	r.srcDir = filepath.Clean(r.Config.SourceDir)
+
+	if filepath.Ext(r.Config.OutputPath) != ".dmg" {
+		return ErrImageFileExt
+	}
+
+	r.finalDmg = r.Config.OutputPath
+
+	// generate a volume name if empty
+	if len(r.Config.VolumeName) == 0 {
+		vname := strings.TrimSuffix(filepath.Base(r.Config.OutputPath), ".dmg")
+		r.volNameOpts = []string{"-volname", vname}
+	} else {
+		r.volNameOpts = []string{"-volname", r.Config.VolumeName}
+	}
+
+	// validate image format
+	if v := r.Config.imageFormatToArgs(); len(v) > 0 {
+		r.formatOpts = v
+	} else {
+		return ErrInvFormatOpt
+	}
+
+	// validate filesystem
+	if v := r.Config.filesystemToArgs(); len(v) > 0 {
+		r.fsOpts = v
+	} else {
+		return ErrInvFilesystemOpt
+	}
+
+	// check custom size if it's passed
+	if r.Config.VolumeSizeMb > 0 {
+		r.sizeOpts = []string{"-size", fmt.Sprintf("%dm", r.Config.VolumeSizeMb)}
+	}
+
+	r.cleanupFuncs = []func(){}
+
+	// create a working directory
+	tmpDir, err := os.MkdirTemp("", "mkdmg-")
+	if err != nil {
+		return fmt.Errorf("%v: %w", ErrCreateDir, err)
+	}
+
+	r.tmpDir = tmpDir
+	r.tmpDmg = filepath.Join(tmpDir, "temp.dmg")
+	// signingIdentity
+	r.signOpt = r.Config.SigningIdentity
+
+	return nil
 }
 
 func runCommand(name string, args ...string) error {
@@ -141,11 +254,3 @@ func runCommandOutput(name string, args ...string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	return string(output), err
 }
-
-var (
-	ErrInvFormatOpt     = errors.New("invalid image format")
-	ErrInvFilesystemOpt = errors.New("invalid image filesystem")
-	ErrCreateDir        = errors.New("couldn't create directory")
-	ErrImageFileExt     = errors.New("output file must have a .dmg extension")
-	ErrMountImage       = errors.New("couldn't attach disk image")
-)

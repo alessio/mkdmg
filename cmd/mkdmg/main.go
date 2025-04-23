@@ -22,9 +22,8 @@ var (
 	apfsFs          bool
 	sandboxSafe     bool
 	format          string
-	// hdiutilVerbose  bool
 
-	ImageKeyArgs []string
+	hdiutilVerbosity int
 
 	verboseLog *log.Logger
 )
@@ -67,7 +66,7 @@ func init() {
 	pflag.BoolVar(&apfsFs, "apsf", false, "use APFS as disk image's filesystem (default: HFS+)")
 	pflag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	pflag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
-	// pflag.BoolVar(&hdiutilVerbose, "hdiutil-verbose", false, "enable verbose mode")
+	pflag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "V", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
 
 	verboseLog = log.New(io.Discard, "go-make-dmg: ", 0)
 }
