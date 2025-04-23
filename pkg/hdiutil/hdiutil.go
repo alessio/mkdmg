@@ -21,6 +21,7 @@ var (
 	ErrMountImage       = errors.New("couldn't attach disk image")
 	ErrSignIdNotFound   = errors.New("signing identity not found")
 	ErrCodesignFailed   = errors.New("codesign command failed")
+	ErrSandboxAPFS      = errors.New("creating an APFS disk image that is sandbox safe is not supported")
 )
 
 var (
@@ -144,23 +145,6 @@ func (r *Runner) createTempImageSandboxSafe() error {
 	return r.runHdiutil(args2...)
 }
 
-func (r *Runner) runHdiutil(args ...string) error {
-	if r.Simulate {
-		verboseLog.Println("Simulating hdiutil command: ", args)
-		return nil
-	}
-	return runCommand("hdiutil", args...)
-}
-
-func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
-	if r.Simulate {
-		verboseLog.Println("Simulating hdiutil command: ", args)
-		return "", nil
-	}
-
-	return runCommandOutput("hdiutil", args...)
-}
-
 func (r *Runner) setHdiutilVerbosity(args []string) []string {
 	if len(args) == 0 || r.HDIUtilVerbosity == 0 {
 		return args
@@ -220,6 +204,11 @@ func (r *Runner) init() error {
 		return ErrInvFilesystemOpt
 	}
 
+	// sandbox safe and APFS are mutually exclusive
+	if r.Config.SandboxSafe && strings.ToUpper(r.Config.FileSystem) == "APFS" {
+		return ErrSandboxAPFS
+	}
+
 	// check custom size if it's passed
 	if r.Config.VolumeSizeMb > 0 {
 		r.sizeOpts = []string{"-size", fmt.Sprintf("%dm", r.Config.VolumeSizeMb)}
@@ -239,6 +228,23 @@ func (r *Runner) init() error {
 	r.signOpt = r.Config.SigningIdentity
 
 	return nil
+}
+
+func (r *Runner) runHdiutil(args ...string) error {
+	if r.Simulate {
+		verboseLog.Println("Simulating hdiutil command: ", args)
+		return nil
+	}
+	return runCommand("hdiutil", args...)
+}
+
+func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
+	if r.Simulate {
+		verboseLog.Println("Simulating hdiutil command: ", args)
+		return "", nil
+	}
+
+	return runCommandOutput("hdiutil", args...)
 }
 
 func runCommand(name string, args ...string) error {
