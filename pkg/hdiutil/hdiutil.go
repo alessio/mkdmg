@@ -62,8 +62,7 @@ type Runner struct {
 	tmpDmg   string
 	finalDmg string
 
-	permFixed    bool
-	cleanupFuncs []func()
+	permFixed bool
 }
 
 func (r *Runner) CreateDstDMG() error {
@@ -163,7 +162,7 @@ func (r *Runner) Notarize() error {
 
 func (r *Runner) createTempImage() error {
 	args := slices.Concat([]string{"create"},
-		r.filesystemToArgs(),
+		r.fsOpts,
 		r.sizeOpts,
 		[]string{
 			"-format", "UDRW", "-volname", r.VolumeName, "-srcfolder", r.srcDir, r.tmpDmg},
@@ -232,9 +231,7 @@ func (r *Runner) init() error {
 	if r.Config.VolumeSizeMb > 0 {
 		r.sizeOpts = []string{"-size", fmt.Sprintf("%dm", r.Config.VolumeSizeMb)}
 	}
-
-	r.cleanupFuncs = []func(){}
-
+	
 	// create a working directory
 	tmpDir, err := os.MkdirTemp("", "mkdmg-")
 	if err != nil {

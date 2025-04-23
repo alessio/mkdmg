@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/alessio/mkdmg/pkg/hdiutil"
-	// /	"github.com/joho/godotenv"
+
 	"github.com/spf13/pflag"
 )
 
