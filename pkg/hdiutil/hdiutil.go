@@ -62,8 +62,6 @@ type Runner struct {
 	tmpDmg   string
 	finalDmg string
 
-	simulate bool
-
 	permFixed    bool
 	cleanupFuncs []func()
 }
@@ -109,7 +107,7 @@ func (r *Runner) Bless() error {
 		return nil
 	}
 
-	return runCommand("bless", "--folder", r.mountDir)
+	return r.runCommand("bless", "--folder", r.mountDir)
 }
 
 func (r *Runner) FinalizeDMG() error {
@@ -126,11 +124,11 @@ func (r *Runner) Codesign() error {
 		return nil
 	}
 
-	if err := runCommand("codesign", "-s", r.signOpt, r.finalDmg); err != nil {
+	if err := r.runCommand("codesign", "-s", r.signOpt, r.finalDmg); err != nil {
 		return fmt.Errorf("%w: codesign command failed: %v", ErrCodesignFailed, err)
 	}
 
-	if err := runCommand("codesign",
+	if err := r.runCommand("codesign",
 		"--verify", "--deep", "--strict", "--verbose=2", r.finalDmg); err != nil {
 		return fmt.Errorf("%w: the signature seems invalid: %v", ErrCodesignFailed, err)
 	}
@@ -146,14 +144,14 @@ func (r *Runner) Notarize() error {
 	}
 
 	verboseLog.Println("Start notarization")
-	if err := runCommand("xcrun", "notarytool", "submit",
+	if err := r.runCommand("xcrun", "notarytool", "submit",
 		r.finalDmg, "--keychain-profile", r.notarizeOpt,
 	); err != nil {
 		return fmt.Errorf("%w: notarization failed: %v", ErrNotarizeFailed, err)
 	}
 
 	verboseLog.Println("Stapling the notarization ticket")
-	if output, err := runCommandOutput(
+	if output, err := r.runCommandOutput(
 		"xcrun", "stapler", "staple", r.finalDmg); err != nil {
 		return fmt.Errorf("%w: stapler failed: %v", ErrNotarizeFailed, output)
 	}
@@ -212,16 +210,11 @@ func (r *Runner) setHdiutilVerbosity(args []string) []string {
 }
 
 func (r *Runner) init() error {
-	if len(r.Config.SourceDir) == 0 {
-		return ErrInvSourceDir
+	if err := r.Config.validate(); err != nil {
+		return err
 	}
 
 	r.srcDir = filepath.Clean(r.Config.SourceDir)
-
-	if filepath.Ext(r.Config.OutputPath) != ".dmg" {
-		return ErrImageFileExt
-	}
-
 	r.finalDmg = r.Config.OutputPath
 
 	// generate a volume name if empty
@@ -232,24 +225,8 @@ func (r *Runner) init() error {
 		r.volNameOpts = []string{"-volname", r.Config.VolumeName}
 	}
 
-	// validate image format
-	if v := r.Config.imageFormatToArgs(); len(v) > 0 {
-		r.formatOpts = v
-	} else {
-		return ErrInvFormatOpt
-	}
-
-	// validate filesystem
-	if v := r.Config.filesystemToArgs(); len(v) > 0 {
-		r.fsOpts = v
-	} else {
-		return ErrInvFilesystemOpt
-	}
-
-	// sandbox safe and APFS are mutually exclusive
-	if r.Config.SandboxSafe && strings.ToUpper(r.Config.FileSystem) == "APFS" {
-		return ErrSandboxAPFS
-	}
+	r.formatOpts = r.Config.imageFormatToArgs()
+	r.fsOpts = r.Config.filesystemToArgs()
 
 	// check custom size if it's passed
 	if r.Config.VolumeSizeMb > 0 {
@@ -279,7 +256,7 @@ func (r *Runner) fixPermissions() {
 	}
 
 	verboseLog.Println("Fixing permissions")
-	if err := runCommand("chmod", []string{
+	if err := r.runCommand("chmod", []string{
 		"-Rf", "go-w", r.mountDir,
 	}...); err != nil {
 		verboseLog.Printf("chmod failed: %v", err)
@@ -293,7 +270,7 @@ func (r *Runner) runHdiutil(args ...string) error {
 		verboseLog.Println("Simulating hdiutil command: ", args)
 		return nil
 	}
-	return runCommand("hdiutil", args...)
+	return r.runCommand("hdiutil", args...)
 }
 
 func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
@@ -302,19 +279,25 @@ func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
 		return "", nil
 	}
 
-	return runCommandOutput("hdiutil", args...)
+	return r.runCommandOutput("hdiutil", args...)
 }
 
-func runCommand(name string, args ...string) error {
+func (r *Runner) runCommand(name string, args ...string) error {
 	verboseLog.Println("Running '", name, args)
+	if r.Simulate {
+		return nil
+	}
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
-func runCommandOutput(name string, args ...string) (string, error) {
+func (r *Runner) runCommandOutput(name string, args ...string) (string, error) {
 	verboseLog.Println("Running '", name, args)
+	if r.Simulate {
+		return "", nil
+	}
 	cmd := exec.Command(name, args...)
 	output, err := cmd.CombinedOutput()
 	return string(output), err

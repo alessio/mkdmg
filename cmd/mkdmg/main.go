@@ -68,6 +68,7 @@ func main() {
 		SigningIdentity:     signingIdentity,
 		NotarizeCredentials: notarizeCredentials,
 		Simulate:            simulate,
+		Bless:               bless,
 		OutputPath:          pflag.Arg(0),
 		SourceDir:           pflag.Arg(1),
 	}
@@ -83,6 +84,7 @@ func main() {
 	checkErr(runner.CreateDstDMG())
 
 	checkErr(runner.AttachDiskImage())
+	checkErr(runner.Bless())
 	checkErr(runner.DetachDiskImage())
 	checkErr(runner.FinalizeDMG())
 

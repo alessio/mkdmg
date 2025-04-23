@@ -1,10 +1,9 @@
 package hdiutil
 
 import (
+	"path/filepath"
 	"strings"
 )
-
-type FileSystemType string
 
 type Config struct {
 	VolumeName          string
@@ -22,6 +21,31 @@ type Config struct {
 	SourceDir  string
 
 	Simulate bool
+}
+
+func (c *Config) validate() error {
+	if len(c.SourceDir) == 0 {
+		return ErrInvSourceDir
+	}
+
+	if filepath.Ext(c.OutputPath) != ".dmg" {
+		return ErrImageFileExt
+	}
+
+	if len(c.imageFormatToArgs()) == 0 {
+		return ErrInvFormatOpt
+	}
+
+	if len(c.filesystemToArgs()) == 0 {
+		return ErrInvFilesystemOpt
+	}
+
+	// sandbox safe and APFS are mutually exclusive
+	if c.SandboxSafe && strings.ToUpper(c.FileSystem) == "APFS" {
+		return ErrSandboxAPFS
+	}
+
+	return nil
 }
 
 func (c *Config) filesystemToArgs() []string {
