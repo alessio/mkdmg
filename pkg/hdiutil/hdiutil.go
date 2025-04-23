@@ -51,15 +51,15 @@ type Runner struct {
 	formatOpts  []string
 	sizeOpts    []string
 	fsOpts      []string
+	signOpt     string
+	hdiutilOpts []string
 
 	srcDir   string
 	tmpDir   string
+	mountDir string
+
 	tmpDmg   string
 	finalDmg string
-
-	signOpt string
-
-	hdiutilOpts []string
 
 	simulate bool
 
@@ -74,32 +74,32 @@ func (r *Runner) CreateDstDMG() error {
 	return r.createTempImage()
 }
 
-func (r *Runner) AttachDiskImage() (string, error) {
+func (r *Runner) AttachDiskImage() error {
 	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
 	if err != nil {
-		return "",
-			fmt.Errorf("%w: %s", ErrMountImage, output)
+		return fmt.Errorf("%w: %s", ErrMountImage, output)
 	}
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "/Volumes/") {
 			fields := strings.Fields(line)
-			return fields[len(fields)-1], nil
+			r.mountDir = fields[len(fields)-1]
+			return nil
 		}
 	}
 
-	return "", fmt.Errorf("%w: couldn't find mount point: %q", ErrMountImage, output)
+	return fmt.Errorf("%w: couldn't find mount point: %q", ErrMountImage, output)
 }
 
-func (r *Runner) DetachDiskImage(mountPoint string) error {
-	return r.runHdiutil("detach", mountPoint)
+func (r *Runner) DetachDiskImage() error {
+	return r.runHdiutil("detach", r.mountDir)
 }
 
 func (r *Runner) FinalizeDMG() error {
 	args := slices.Concat(
 		[]string{"convert", r.tmpDmg},
 		r.formatOpts,
-		[]string{r.tmpDmg, r.finalDmg})
+		[]string{"-o", r.finalDmg})
 	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
 }
 
@@ -126,7 +126,7 @@ func (r *Runner) createTempImage() error {
 		r.filesystemToArgs(),
 		r.sizeOpts,
 		[]string{
-			"-format", "UDRW", "-volname", r.VolumeName, "-srcfolder", r.srcDir, r.tmpDir},
+			"-format", "UDRW", "-volname", r.VolumeName, "-srcfolder", r.srcDir, r.tmpDmg},
 	)
 
 	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
@@ -256,6 +256,7 @@ func runCommand(name string, args ...string) error {
 }
 
 func runCommandOutput(name string, args ...string) (string, error) {
+	verboseLog.Println("Running '", name, args)
 	cmd := exec.Command(name, args...)
 	output, err := cmd.CombinedOutput()
 	return string(output), err
