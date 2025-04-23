@@ -9,7 +9,7 @@ import (
 
 func TestInit(t *testing.T) {
 	hdiutil.SetLogWriter(os.Stderr)
-	cfgs := []hdiutil.Config{
+	configs := []hdiutil.Config{
 		{
 			OutputPath:      "test.dmg",
 			VolumeName:      "test",
@@ -40,8 +40,8 @@ func TestInit(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"test", args{&cfgs[0]}, false},
-		{"test", args{&cfgs[1]}, false},
+		{"test", args{&configs[0]}, false},
+		{"test", args{&configs[1]}, false},
 	}
 
 	for _, tt := range tests {

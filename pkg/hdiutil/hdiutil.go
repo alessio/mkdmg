@@ -19,7 +19,6 @@ var (
 	ErrCreateDir        = errors.New("couldn't create directory")
 	ErrImageFileExt     = errors.New("output file must have a .dmg extension")
 	ErrMountImage       = errors.New("couldn't attach disk image")
-	ErrSignIdNotFound   = errors.New("signing identity not found")
 	ErrCodesignFailed   = errors.New("codesign command failed")
 	ErrNotarizeFailed   = errors.New("notarization failed")
 	ErrSandboxAPFS      = errors.New("creating an APFS disk image that is sandbox safe is not supported")
@@ -30,7 +29,7 @@ var (
 )
 
 func init() {
-	verboseLog = log.New(io.Discard, "hdiutil:", 0)
+	verboseLog = log.New(io.Discard, "hdiutil: ", 0)
 }
 
 func SetLogWriter(w io.Writer) {
