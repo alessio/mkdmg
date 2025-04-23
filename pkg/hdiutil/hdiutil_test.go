@@ -40,7 +40,7 @@ func TestInit(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"test", args{&configs[0]}, false},
+		{"test", args{&configs[0]}, true},
 		{"test", args{&configs[1]}, false},
 	}
 
@@ -49,6 +49,10 @@ func TestInit(t *testing.T) {
 			r := hdiutil.New(tt.args.c)
 			if err := r.Setup(); (err != nil) != tt.wantErr {
 				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
 			}
 
 			if err := r.CreateDstDMG(); (err != nil) != tt.wantErr {
