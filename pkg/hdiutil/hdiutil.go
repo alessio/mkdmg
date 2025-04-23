@@ -54,7 +54,6 @@ type Runner struct {
 	fsOpts      []string
 	signOpt     string
 	notarizeOpt string
-	hdiutilOpts []string
 
 	srcDir   string
 	tmpDir   string
@@ -177,8 +176,8 @@ func (r *Runner) createTempImage() error {
 	args := slices.Concat([]string{"create"},
 		r.fsOpts,
 		r.sizeOpts,
-		[]string{
-			"-format", "UDRW", "-volname", r.VolumeName, "-srcfolder", r.srcDir, r.tmpDmg},
+		r.volNameOpts,
+		[]string{"-format", "UDRW", "-srcfolder", r.srcDir, r.tmpDmg},
 	)
 
 	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
