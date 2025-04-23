@@ -11,15 +11,16 @@ import (
 )
 
 var (
-	volumeName      string
-	size            int64
-	verbose         bool
-	bless           bool
-	signingIdentity string
-	apfsFs          bool
-	sandboxSafe     bool
-	format          string
-	simulate        bool
+	volumeName          string
+	size                int64
+	verbose             bool
+	bless               bool
+	signingIdentity     string
+	notarizeCredentials string
+	apfsFs              bool
+	sandboxSafe         bool
+	format              string
+	simulate            bool
 
 	hdiutilVerbosity int
 
@@ -42,6 +43,7 @@ func init() {
 	pflag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "V", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
 	pflag.BoolVarP(&simulate, "dry-run", "s", false, "simulate the process")
 	pflag.BoolVar(&bless, "bless", false, "bless the disk image")
+	pflag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
 
 	verboseLog = log.New(io.Discard, "mkdmg: ", 0)
 }
@@ -58,15 +60,16 @@ func main() {
 	}
 
 	cfg := &hdiutil.Config{
-		VolumeName:       volumeName,
-		VolumeSizeMb:     size,
-		SandboxSafe:      sandboxSafe,
-		ImageFormat:      format,
-		HDIUtilVerbosity: hdiutilVerbosity,
-		SigningIdentity:  signingIdentity,
-		Simulate:         simulate,
-		OutputPath:       pflag.Arg(0),
-		SourceDir:        pflag.Arg(1),
+		VolumeName:          volumeName,
+		VolumeSizeMb:        size,
+		SandboxSafe:         sandboxSafe,
+		ImageFormat:         format,
+		HDIUtilVerbosity:    hdiutilVerbosity,
+		SigningIdentity:     signingIdentity,
+		NotarizeCredentials: notarizeCredentials,
+		Simulate:            simulate,
+		OutputPath:          pflag.Arg(0),
+		SourceDir:           pflag.Arg(1),
 	}
 	if apfsFs {
 		cfg.FileSystem = "APFS"
@@ -83,9 +86,8 @@ func main() {
 	checkErr(runner.DetachDiskImage())
 	checkErr(runner.FinalizeDMG())
 
-	if signingIdentity != "" {
-		checkErr(runner.CodesignFinalDMG())
-	}
+	checkErr(runner.Codesign())
+	checkErr(runner.Notarize())
 
 	verboseLog.Printf("DMG created successfully: %s\n", runner.OutputPath)
 }

@@ -7,13 +7,14 @@ import (
 type FileSystemType string
 
 type Config struct {
-	VolumeName      string
-	VolumeSizeMb    int64
-	SandboxSafe     bool
-	Bless           bool
-	FileSystem      string
-	SigningIdentity string
-	ImageFormat     string
+	VolumeName          string
+	VolumeSizeMb        int64
+	SandboxSafe         bool
+	Bless               bool
+	FileSystem          string
+	SigningIdentity     string
+	NotarizeCredentials string
+	ImageFormat         string
 
 	HDIUtilVerbosity int
 

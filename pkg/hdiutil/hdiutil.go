@@ -21,6 +21,7 @@ var (
 	ErrMountImage       = errors.New("couldn't attach disk image")
 	ErrSignIdNotFound   = errors.New("signing identity not found")
 	ErrCodesignFailed   = errors.New("codesign command failed")
+	ErrNotarizeFailed   = errors.New("notarization failed")
 	ErrSandboxAPFS      = errors.New("creating an APFS disk image that is sandbox safe is not supported")
 )
 
@@ -52,6 +53,7 @@ type Runner struct {
 	sizeOpts    []string
 	fsOpts      []string
 	signOpt     string
+	notarizeOpt string
 	hdiutilOpts []string
 
 	srcDir   string
@@ -119,9 +121,10 @@ func (r *Runner) FinalizeDMG() error {
 	)...)
 }
 
-func (r *Runner) CodesignFinalDMG() error {
+func (r *Runner) Codesign() error {
 	if len(r.signOpt) == 0 {
-		return ErrSignIdNotFound
+		verboseLog.Println("Skipping codesign")
+		return nil
 	}
 
 	if err := runCommand("codesign", "-s", r.signOpt, r.finalDmg); err != nil {
@@ -134,6 +137,30 @@ func (r *Runner) CodesignFinalDMG() error {
 	}
 
 	verboseLog.Println("codesign complete")
+	return nil
+}
+
+func (r *Runner) Notarize() error {
+	if len(r.notarizeOpt) == 0 {
+		verboseLog.Println("Skipping notarization")
+		return nil
+	}
+
+	verboseLog.Println("Start notarization")
+	if err := runCommand("xcrun", "notarytool", "submit",
+		r.finalDmg, "--keychain-profile", r.notarizeOpt,
+	); err != nil {
+		return fmt.Errorf("%w: notarization failed: %v", ErrNotarizeFailed, err)
+	}
+
+	verboseLog.Println("Stapling the notarization ticket")
+	if output, err := runCommandOutput(
+		"xcrun", "stapler", "staple", r.finalDmg); err != nil {
+		return fmt.Errorf("%w: stapler failed: %v", ErrNotarizeFailed, output)
+	}
+
+	verboseLog.Println("Notarization complete")
+
 	return nil
 }
 
@@ -242,6 +269,7 @@ func (r *Runner) init() error {
 	r.tmpDmg = filepath.Join(tmpDir, "temp.dmg")
 	// signingIdentity
 	r.signOpt = r.Config.SigningIdentity
+	r.notarizeOpt = r.Config.NotarizeCredentials
 
 	return nil
 }
