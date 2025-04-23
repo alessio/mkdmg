@@ -80,6 +80,7 @@ func main() {
 	if err := runner.Setup(); err != nil {
 		log.Fatalf("Failed to setup: %v", err)
 	}
+	defer runner.Cleanup()
 
 	checkErr(runner.Start())
 

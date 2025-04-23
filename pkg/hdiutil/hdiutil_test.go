@@ -45,10 +45,11 @@ func TestInit(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t2 *testing.T) {
 			r := hdiutil.New(tt.args.c)
+			t2.Cleanup(r.Cleanup)
 			if err := r.Setup(); (err != nil) != tt.wantErr {
-				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
+				t2.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if tt.wantErr {
@@ -56,7 +57,7 @@ func TestInit(t *testing.T) {
 			}
 
 			if err := r.Start(); (err != nil) != tt.wantErr {
-				t.Errorf("Start() error = %v, wantErr %v", err, tt.wantErr)
+				t2.Errorf("Start() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
