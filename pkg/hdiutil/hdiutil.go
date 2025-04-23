@@ -93,6 +93,7 @@ func (r *Runner) AttachDiskImage() error {
 }
 
 func (r *Runner) DetachDiskImage() error {
+	r.fixPermissions()
 	return r.runHdiutil("detach", r.mountDir)
 }
 
@@ -111,7 +112,6 @@ func (r *Runner) Bless() error {
 }
 
 func (r *Runner) FinalizeDMG() error {
-	r.fixPermissions()
 	return r.runHdiutil(r.setHdiutilVerbosity(slices.Concat(
 		[]string{"convert", r.tmpDmg},
 		r.formatOpts,

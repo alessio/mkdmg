@@ -36,11 +36,12 @@ func init() {
 	pflag.Int64Var(&size, "disk-image-size", 0, "size for the DMG in MB")
 	pflag.BoolVarP(&verbose, "verbose", "v", false, "enable verbose mode")
 	pflag.StringVar(&signingIdentity, "codesign", "", "signing identity")
-	pflag.BoolVar(&apfsFs, "apsf", false, "use APFS as disk image's filesystem (default: HFS+)")
+	pflag.BoolVar(&apfsFs, "apfs", false, "use APFS as disk image's filesystem (default: HFS+)")
 	pflag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	pflag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
 	pflag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "V", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
 	pflag.BoolVarP(&simulate, "dry-run", "s", false, "simulate the process")
+	pflag.BoolVar(&bless, "bless", false, "bless the disk image")
 
 	verboseLog = log.New(io.Discard, "mkdmg: ", 0)
 }
