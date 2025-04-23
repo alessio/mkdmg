@@ -55,8 +55,8 @@ func TestInit(t *testing.T) {
 				return
 			}
 
-			if err := r.CreateDstDMG(); (err != nil) != tt.wantErr {
-				t.Errorf("CreateDstDMG() error = %v, wantErr %v", err, tt.wantErr)
+			if err := r.Start(); (err != nil) != tt.wantErr {
+				t.Errorf("Start() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -81,7 +81,7 @@ func main() {
 		log.Fatalf("Failed to setup: %v", err)
 	}
 
-	checkErr(runner.CreateDstDMG())
+	checkErr(runner.Start())
 
 	checkErr(runner.AttachDiskImage())
 	checkErr(runner.Bless())

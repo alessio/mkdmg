@@ -22,6 +22,7 @@ var (
 	ErrCodesignFailed   = errors.New("codesign command failed")
 	ErrNotarizeFailed   = errors.New("notarization failed")
 	ErrSandboxAPFS      = errors.New("creating an APFS disk image that is sandbox safe is not supported")
+	ErrNeedInit         = errors.New("runner not properly initialized, call Setup() first")
 )
 
 var (
@@ -73,7 +74,11 @@ func (r *Runner) Cleanup() {
 	}
 }
 
-func (r *Runner) CreateDstDMG() error {
+func (r *Runner) Start() error {
+	if r.tmpDir == "" || r.tmpDmg == "" {
+		return ErrNeedInit
+	}
+
 	if r.Config.SandboxSafe {
 		return r.createTempImageSandboxSafe()
 	}
