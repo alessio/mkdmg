@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	// /	"github.com/joho/godotenv"
 	"github.com/spf13/pflag"
 )
 
@@ -85,7 +86,7 @@ func main() {
 		log.Fatalln("creating an APFS disk image that is sandbox safe is not supported")
 	}
 
-	if len(imageFormatToArgs()) == 0 {
+	if !FormatArgs.Validate() {
 		log.Fatalln("invalid format:", format)
 	}
 
