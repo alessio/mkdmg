@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alessio/mkdmg/pkg/hdiutil"
+	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
 )
 
 func TestInit(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/alessio/mkdmg/pkg/hdiutil"
+	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
 
 	"github.com/spf13/pflag"
 )
