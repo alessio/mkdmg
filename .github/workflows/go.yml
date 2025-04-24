@@ -35,5 +35,5 @@ jobs:
     - name: Test
       run: go test -v -race ./...
 
-    - namee: Test run
+    - name: Test run
       run: ./mkdmg -V
