@@ -14,17 +14,26 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: 'stable'
 
+    - name: Run go generate
+      run: go generate ./internal/...
+
     - name: Build
       run: go build -v ./...
 
     - name: Test
       run: go test -v -race ./...
+
+    - namee: Test run
+      run: ./mkdmg -V
