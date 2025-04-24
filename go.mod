@@ -1,4 +1,4 @@
-module github.com/alessio/mkdmg
+module al.essio.dev/cmd/mkdmg
 
 go 1.24
 
