@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
+	"al.essio.dev/cmd/mkdmg/internal/version"
 
 	flag "github.com/spf13/pflag"
 )
@@ -131,6 +132,6 @@ func usage() {
 }
 
 func printVersion() {
-	fmt.Println("mkdmg, version", "UNRELEASED")
+	fmt.Println("mkdmg, version", version.Version)
 	fmt.Println("Copyright (C) 2025 Alessio Treglia <alessio@debian.org>")
 }
