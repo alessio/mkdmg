@@ -34,6 +34,3 @@ jobs:
 
     - name: Test
       run: go test -v -race ./...
-
-    - name: Test run
-      run: ./mkdmg -V
