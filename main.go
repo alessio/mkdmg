@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	configPath          string
 	volumeName          string
 	size                int64
 	bless               bool
@@ -38,6 +39,7 @@ func init() {
 
 	flag.CommandLine.SetOutput(os.Stderr)
 
+	flag.StringVar(&configPath, "config", "", "path to a JSON configuration file")
 	flag.StringVar(&volumeName, "volname", "", "volume name for the DMG")
 	flag.Int64Var(&size, "disk-image-size", 0, "size for the DMG in MB")
 	flag.StringVar(&signingIdentity, "codesign", "", "signing identity")
@@ -75,30 +77,74 @@ func main() {
 		return
 	}
 
-	if flag.NArg() != 2 {
-		log.Fatalln("invalid arguments")
+	var cfg *hdiutil.Config
+	var err error
+
+	if configPath != "" {
+		cfg, err = hdiutil.LoadConfig(configPath)
+		if err != nil {
+			log.Fatalf("failed to load config: %v", err)
+		}
+	} else {
+		if flag.NArg() != 2 {
+			log.Fatalln("invalid arguments")
+		}
+
+		cfg = &hdiutil.Config{
+			OutputPath: flag.Arg(0),
+			SourceDir:  flag.Arg(1),
+		}
+	}
+
+	// Override with CLI flags if set
+	if isFlagPassed("volname") {
+		cfg.VolumeName = volumeName
+	}
+	if isFlagPassed("disk-image-size") {
+		cfg.VolumeSizeMb = size
+	}
+	if isFlagPassed("sandbox-safe") {
+		cfg.SandboxSafe = sandboxSafe
+	}
+	if isFlagPassed("format") {
+		cfg.ImageFormat = format
+	}
+	if isFlagPassed("hdiutil-verbosity") {
+		cfg.HDIUtilVerbosity = hdiutilVerbosity
+	}
+	if isFlagPassed("codesign") {
+		cfg.SigningIdentity = signingIdentity
+	}
+	if isFlagPassed("notarize") {
+		cfg.NotarizeCredentials = notarizeCredentials
+	}
+	if isFlagPassed("dry-run") {
+		cfg.Simulate = simulate
+	}
+	if isFlagPassed("bless") {
+		cfg.Bless = bless
+	}
+	if isFlagPassed("apfs") {
+		if apfsFs {
+			cfg.FileSystem = "APFS"
+		} else {
+			cfg.FileSystem = "HFS+"
+		}
+	}
+
+	// Positional arguments override config if provided
+	if flag.NArg() == 2 {
+		cfg.OutputPath = flag.Arg(0)
+		cfg.SourceDir = flag.Arg(1)
+	}
+
+	if cfg.OutputPath == "" || cfg.SourceDir == "" {
+		log.Fatalln("missing output path or source directory")
 	}
 
 	if verboseMode {
 		verboseLog.SetOutput(os.Stderr)
 		hdiutil.SetLogWriter(os.Stderr)
-	}
-
-	cfg := &hdiutil.Config{
-		VolumeName:          volumeName,
-		VolumeSizeMb:        size,
-		SandboxSafe:         sandboxSafe,
-		ImageFormat:         format,
-		HDIUtilVerbosity:    hdiutilVerbosity,
-		SigningIdentity:     signingIdentity,
-		NotarizeCredentials: notarizeCredentials,
-		Simulate:            simulate,
-		Bless:               bless,
-		OutputPath:          flag.Arg(0),
-		SourceDir:           flag.Arg(1),
-	}
-	if apfsFs {
-		cfg.FileSystem = "APFS"
 	}
 
 	runner := hdiutil.New(cfg)
@@ -134,4 +180,14 @@ func usage() {
 func printVersion() {
 	fmt.Println("mkdmg, version", version.Version)
 	fmt.Println("Copyright (C) 2025 Alessio Treglia <alessio@debian.org>")
+}
+
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
