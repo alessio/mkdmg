@@ -500,3 +500,246 @@ func TestConfig_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_MultipleFormatsValidation(t *testing.T) {
+	formats := []string{"UDZO", "UDBZ", "ULFO", "ULMO", ""}
+
+	for _, format := range formats {
+		t.Run("format_"+format, func(t *testing.T) {
+			cfg := hdiutil.Config{
+				SourceDir:   "src",
+				OutputPath:  "test.dmg",
+				ImageFormat: format,
+			}
+
+			err := cfg.Validate()
+			if err != nil {
+				t.Errorf("Validate() with format %s error = %v", format, err)
+			}
+		})
+	}
+}
+
+func TestConfig_PathWithSpaces(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:  "source with spaces",
+		OutputPath: "output with spaces.dmg",
+		VolumeName: "Volume With Spaces",
+	}
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Errorf("Validate() with spaces in paths error = %v", err)
+	}
+
+	volumeName := cfg.VolumeNameOpt()
+	if volumeName != "Volume With Spaces" {
+		t.Errorf("VolumeNameOpt() = %v, want 'Volume With Spaces'", volumeName)
+	}
+}
+
+func TestConfig_SpecialCharactersInPaths(t *testing.T) {
+	tests := []struct {
+		name       string
+		outputPath string
+		wantErr    bool
+	}{
+		{
+			name:       "hyphen_in_name",
+			outputPath: "my-app.dmg",
+			wantErr:    false,
+		},
+		{
+			name:       "underscore_in_name",
+			outputPath: "my_app.dmg",
+			wantErr:    false,
+		},
+		{
+			name:       "dot_in_middle",
+			outputPath: "my.app.dmg",
+			wantErr:    false,
+		},
+		{
+			name:       "multiple_extensions",
+			outputPath: "my.app.v1.dmg",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := hdiutil.Config{
+				SourceDir:  "src",
+				OutputPath: tt.outputPath,
+			}
+
+			err := cfg.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidateAfterModification(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:  "src",
+		OutputPath: "test.dmg",
+	}
+
+	// First validation
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("First Validate() error = %v", err)
+	}
+
+	// Modify config
+	cfg.VolumeName = "NewVolume"
+	cfg.VolumeSizeMb = 100
+
+	// Second validation should also succeed
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Second Validate() error = %v", err)
+	}
+
+	// Verify new values are used
+	if got := cfg.VolumeNameOpt(); got != "NewVolume" {
+		t.Errorf("VolumeNameOpt() = %v, want NewVolume", got)
+	}
+
+	opts := cfg.VolumeSizeOpts()
+	if len(opts) == 0 {
+		t.Error("VolumeSizeOpts() should return options after setting size")
+	}
+}
+
+func TestConfig_ZeroValueConfig(t *testing.T) {
+	var cfg hdiutil.Config
+
+	// Zero value config should fail validation
+	err := cfg.Validate()
+	if err == nil {
+		t.Error("Validate() on zero value Config should return error")
+	}
+
+	if !errors.Is(err, hdiutil.ErrInvSourceDir) {
+		t.Errorf("Validate() error = %v, want %v", err, hdiutil.ErrInvSourceDir)
+	}
+}
+
+func TestConfig_BothBlessAndSandboxSafe(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:   "src",
+		OutputPath:  "test.dmg",
+		Bless:       true,
+		SandboxSafe: true,
+		FileSystem:  "HFS+",
+	}
+
+	// This combination should be valid (bless just gets skipped for sandbox-safe)
+	err := cfg.Validate()
+	if err != nil {
+		t.Errorf("Validate() with both Bless and SandboxSafe error = %v", err)
+	}
+}
+
+func TestConfig_AllImageFormatsWithAllFilesystems(t *testing.T) {
+	formats := []string{"UDZO", "UDBZ", "ULFO", "ULMO"}
+	filesystems := []string{"HFS+", "APFS"}
+
+	for _, format := range formats {
+		for _, fs := range filesystems {
+			t.Run("format_"+format+"_fs_"+fs, func(t *testing.T) {
+				cfg := hdiutil.Config{
+					SourceDir:   "src",
+					OutputPath:  "test.dmg",
+					ImageFormat: format,
+					FileSystem:  fs,
+				}
+
+				err := cfg.Validate()
+				if err != nil {
+					t.Errorf("Validate() with format %s and fs %s error = %v", format, fs, err)
+				}
+
+				formatOpts := cfg.ImageFormatOpts()
+				if len(formatOpts) == 0 {
+					t.Errorf("ImageFormatOpts() returned empty for format %s", format)
+				}
+
+				fsOpts := cfg.FilesystemOpts()
+				if len(fsOpts) == 0 {
+					t.Errorf("FilesystemOpts() returned empty for fs %s", fs)
+				}
+			})
+		}
+	}
+}
+
+func TestConfig_OutputPathExtensionCaseSensitive(t *testing.T) {
+	tests := []struct {
+		name       string
+		outputPath string
+		wantErr    bool
+	}{
+		{"lowercase_dmg", "test.dmg", false},
+		{"uppercase_DMG", "test.DMG", true},
+		{"mixed_case_Dmg", "test.Dmg", true},
+		{"mixed_case_dMg", "test.dMg", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := hdiutil.Config{
+				SourceDir:  "src",
+				OutputPath: tt.outputPath,
+			}
+
+			err := cfg.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_VolumeNameFromComplexPath(t *testing.T) {
+	tests := []struct {
+		name       string
+		outputPath string
+		want       string
+	}{
+		{
+			name:       "absolute_path",
+			outputPath: "/usr/local/bin/myapp.dmg",
+			want:       "myapp",
+		},
+		{
+			name:       "relative_path_with_dots",
+			outputPath: "../../output/myapp.dmg",
+			want:       "myapp",
+		},
+		{
+			name:       "path_with_multiple_dots",
+			outputPath: "/path/to/app.v1.2.3.dmg",
+			want:       "app.v1.2.3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := hdiutil.Config{
+				SourceDir:  "src",
+				OutputPath: tt.outputPath,
+			}
+
+			if err := cfg.Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+
+			got := cfg.VolumeNameOpt()
+			if got != tt.want {
+				t.Errorf("VolumeNameOpt() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

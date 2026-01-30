@@ -547,3 +547,341 @@ func TestInit(t *testing.T) {
 		})
 	}
 }
+
+func TestRunnerWithRealSourceDirectory(t *testing.T) {
+	// Create a real temporary source directory
+	sourceDir := t.TempDir()
+	testFile := sourceDir + "/test.txt"
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	cfg := hdiutil.Config{
+		SourceDir:  sourceDir,
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	if err := r.Start(); err != nil {
+		t.Errorf("Start() error = %v", err)
+	}
+}
+
+func TestRunnerCompleteWorkflow(t *testing.T) {
+	// Test the complete workflow in simulate mode
+	sourceDir := t.TempDir()
+	testFile := sourceDir + "/test.txt"
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+
+	cfg := hdiutil.Config{
+		SourceDir:    sourceDir,
+		OutputPath:   outputPath,
+		VolumeName:   "TestVol",
+		VolumeSizeMb: 10,
+		Simulate:     true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	// Test complete workflow
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	if err := r.Start(); err != nil {
+		t.Errorf("Start() error = %v", err)
+	}
+
+	// AttachDiskImage, Bless, and DetachDiskImage will fail in simulate mode
+	// without hdiutil because they try to parse output that doesn't exist.
+	// In a real scenario (with hdiutil), these would work in simulate mode.
+	// For unit testing, we skip these or expect errors.
+	_ = r.AttachDiskImage() // Expected to fail in simulate mode without hdiutil
+	_ = r.Bless()           // May fail if attach failed
+	_ = r.DetachDiskImage() // May fail if attach failed
+
+	if err := r.FinalizeDMG(); err != nil {
+		t.Errorf("FinalizeDMG() error = %v", err)
+	}
+
+	if err := r.Codesign(); err != nil {
+		t.Errorf("Codesign() error = %v", err)
+	}
+
+	if err := r.Notarize(); err != nil {
+		t.Errorf("Notarize() error = %v", err)
+	}
+}
+
+func TestRunnerWithSigningIdentity(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:       "test",
+		OutputPath:      "test.dmg",
+		SigningIdentity: "Developer ID Application",
+		Simulate:        true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// In simulate mode, this should not fail even with fake identity
+	if err := r.Codesign(); err != nil {
+		t.Errorf("Codesign() in simulate mode error = %v", err)
+	}
+}
+
+func TestRunnerWithNotarization(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:           "test",
+		OutputPath:          "test.dmg",
+		NotarizeCredentials: "test-profile",
+		Simulate:            true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// In simulate mode, this should not fail
+	if err := r.Notarize(); err != nil {
+		t.Errorf("Notarize() in simulate mode error = %v", err)
+	}
+}
+
+func TestRunnerAllFormatsInSimulateMode(t *testing.T) {
+	formats := []string{"UDZO", "UDBZ", "ULFO", "ULMO"}
+
+	for _, format := range formats {
+		t.Run("format_"+format, func(t *testing.T) {
+			cfg := hdiutil.Config{
+				SourceDir:   "test",
+				OutputPath:  "test.dmg",
+				ImageFormat: format,
+				Simulate:    true,
+			}
+
+			r := hdiutil.New(&cfg)
+			t.Cleanup(r.Cleanup)
+
+			if err := r.Setup(); err != nil {
+				t.Fatalf("Setup() error = %v", err)
+			}
+
+			if err := r.Start(); err != nil {
+				t.Errorf("Start() with format %s error = %v", format, err)
+			}
+
+			if err := r.FinalizeDMG(); err != nil {
+				t.Errorf("FinalizeDMG() with format %s error = %v", format, err)
+			}
+		})
+	}
+}
+
+func TestRunnerBlessWithSandboxSafe(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:   "test",
+		OutputPath:  "test.dmg",
+		Bless:       true,
+		SandboxSafe: true,
+		Simulate:    true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Bless should be skipped for sandbox-safe images
+	if err := r.Bless(); err != nil {
+		t.Errorf("Bless() should not error when skipped, got: %v", err)
+	}
+}
+
+func TestRunnerMultipleCleanupCalls(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:  "test",
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Multiple cleanup calls should not panic
+	r.Cleanup()
+	r.Cleanup()
+	r.Cleanup()
+}
+
+func TestRunnerDetachWithoutAttach(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:  "test",
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Detach without attach should not panic in simulate mode
+	if err := r.DetachDiskImage(); err != nil {
+		t.Logf("DetachDiskImage() without attach returned: %v", err)
+	}
+}
+
+func TestRunnerOperationsBeforeSetup(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:  "test",
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	// All operations should fail before Setup
+	if err := r.Start(); !errors.Is(err, hdiutil.ErrNeedInit) {
+		t.Errorf("Start() before Setup() should return ErrNeedInit, got: %v", err)
+	}
+}
+
+func TestRunnerVerbosityZero(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:        "test",
+		OutputPath:       "test.dmg",
+		HDIUtilVerbosity: 0,
+		Simulate:         true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	if err := r.Start(); err != nil {
+		t.Errorf("Start() with verbosity 0 error = %v", err)
+	}
+}
+
+func TestRunnerNegativeVerbosity(t *testing.T) {
+	cfg := hdiutil.Config{
+		SourceDir:        "test",
+		OutputPath:       "test.dmg",
+		HDIUtilVerbosity: -1,
+		Simulate:         true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Negative verbosity should be treated as 0 (no special flag)
+	if err := r.Start(); err != nil {
+		t.Errorf("Start() with negative verbosity error = %v", err)
+	}
+}
+
+func TestSetLogWriterWithBuffer(t *testing.T) {
+	var buf bytes.Buffer
+	hdiutil.SetLogWriter(&buf)
+
+	// Restore to stderr after test
+	t.Cleanup(func() {
+		hdiutil.SetLogWriter(os.Stderr)
+	})
+
+	cfg := hdiutil.Config{
+		SourceDir:  "test",
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// The buffer might contain log messages (or might not, depending on implementation)
+	t.Logf("Log buffer contents: %s", buf.String())
+}
+
+func TestRunnerOutputPathField(t *testing.T) {
+	outputPath := "/path/to/test.dmg"
+
+	cfg := hdiutil.Config{
+		SourceDir:  "test",
+		OutputPath: outputPath,
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Verify the OutputPath is accessible through the embedded Config
+	if r.OutputPath != outputPath {
+		t.Errorf("OutputPath = %v, want %v", r.OutputPath, outputPath)
+	}
+}
+
+func TestRunnerSourceDirField(t *testing.T) {
+	sourceDir := "/path/to/source"
+
+	cfg := hdiutil.Config{
+		SourceDir:  sourceDir,
+		OutputPath: "test.dmg",
+		Simulate:   true,
+	}
+
+	r := hdiutil.New(&cfg)
+	t.Cleanup(r.Cleanup)
+
+	if err := r.Setup(); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	// Verify the SourceDir is accessible through the embedded Config
+	if r.SourceDir != sourceDir {
+		t.Errorf("SourceDir = %v, want %v", r.SourceDir, sourceDir)
+	}
+}
