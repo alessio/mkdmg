@@ -49,7 +49,7 @@ func init() {
 	flag.BoolVar(&bless, "bless", false, "bless the disk image")
 	flag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
 	flag.BoolVarP(&helpMode, "help", "h", false, "display this help and exit.")
-	flag.BoolVarP(&versionMode, "version", "V", false, "output version information and exit.")
+	flag.BoolVarP(&versionMode, "version", "W", false, "output version information and exit.") // Changed from 'V' to 'W'
 	flag.BoolVarP(&verboseMode, "verboseMode", "v", false, "enable verboseMode mode")
 	flag.Usage = usage
 	flag.ErrHelp = nil
