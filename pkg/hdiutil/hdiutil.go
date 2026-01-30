@@ -148,6 +148,12 @@ func (r *Runner) Start() error {
 // Returns ErrMountImage if it fails or the mount point cannot be determined.
 func (r *Runner) AttachDiskImage() error {
 	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
+
+	if r.Simulate || (output == "" && r.Simulate) {
+		r.mountDir = "/Volumes/" + strings.TrimSuffix(filepath.Base(r.tmpDmg), ".dmg")
+		return nil
+	}
+
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrMountImage, output)
 	}

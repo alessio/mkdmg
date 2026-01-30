@@ -143,13 +143,14 @@ func (c *Config) filesystemToOpts() []string {
 // imageFormatToOpts returns the hdiutil arguments for the configured image format.
 // Supports "UDZO" (default), "UDBZ", "ULFO", and "ULMO". Returns nil for unsupported formats.
 func (c *Config) imageFormatToOpts() []string {
-	switch c.ImageFormat {
+	format := strings.ToUpper(c.ImageFormat)
+	switch format {
 	case "", "UDZO":
 		return []string{"-format", "UDZO", "-imagekey", "zlib-level=9"}
 	case "UDBZ":
 		return []string{"-format", "UDBZ", "-imagekey", "bzip2-level=9"}
 	case "ULFO", "ULMO":
-		return []string{"-format", c.ImageFormat}
+		return []string{"-format", format}
 	default:
 		return nil
 	}

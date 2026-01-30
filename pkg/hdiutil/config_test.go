@@ -45,9 +45,9 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: hdiutil.ErrInvFormatOpt,
 		},
 		{
-			name:    "lowercase_format_returns_error",
+			name:    "valid_with_lowercase_format",
 			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", ImageFormat: "udzo"},
-			wantErr: hdiutil.ErrInvFormatOpt,
+			wantErr: nil,
 		},
 
 		// FileSystem validation
@@ -237,6 +237,11 @@ func TestConfig_ImageFormatOpts(t *testing.T) {
 			name:     "ulmo",
 			format:   "ULMO",
 			wantOpts: []string{"-format", "ULMO"},
+		},
+		{
+			name:     "lowercase_udzo",
+			format:   "udzo",
+			wantOpts: []string{"-format", "UDZO", "-imagekey", "zlib-level=9"},
 		},
 	}
 
