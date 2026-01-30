@@ -1,3 +1,8 @@
+// Package hdiutil provides a Go wrapper around macOS hdiutil command-line tool
+// for creating, manipulating, and signing DMG disk images.
+//
+// The package supports various DMG formats (UDZO, UDBZ, ULFO, ULMO) and filesystems
+// (HFS+, APFS), as well as optional code signing and Apple notarization.
 package hdiutil
 
 import (
@@ -12,17 +17,28 @@ import (
 	"strings"
 )
 
+// Error variables for common failure conditions during DMG creation.
 var (
-	ErrInvSourceDir     = errors.New("invalid source directory")
-	ErrInvFormatOpt     = errors.New("invalid image format")
+	// ErrInvSourceDir indicates the source directory is empty or invalid.
+	ErrInvSourceDir = errors.New("invalid source directory")
+	// ErrInvFormatOpt indicates an unsupported image format was specified.
+	ErrInvFormatOpt = errors.New("invalid image format")
+	// ErrInvFilesystemOpt indicates an unsupported filesystem type was specified.
 	ErrInvFilesystemOpt = errors.New("invalid image filesystem")
-	ErrCreateDir        = errors.New("couldn't create directory")
-	ErrImageFileExt     = errors.New("output file must have a .dmg extension")
-	ErrMountImage       = errors.New("couldn't attach disk image")
-	ErrCodesignFailed   = errors.New("codesign command failed")
-	ErrNotarizeFailed   = errors.New("notarization failed")
-	ErrSandboxAPFS      = errors.New("creating an APFS disk image that is sandbox safe is not supported")
-	ErrNeedInit         = errors.New("runner not properly initialized, call Setup() first")
+	// ErrCreateDir indicates failure to create a temporary working directory.
+	ErrCreateDir = errors.New("couldn't create directory")
+	// ErrImageFileExt indicates the output path doesn't have a .dmg extension.
+	ErrImageFileExt = errors.New("output file must have a .dmg extension")
+	// ErrMountImage indicates failure to attach/mount the disk image.
+	ErrMountImage = errors.New("couldn't attach disk image")
+	// ErrCodesignFailed indicates the codesign command failed or signature verification failed.
+	ErrCodesignFailed = errors.New("codesign command failed")
+	// ErrNotarizeFailed indicates Apple notarization or stapling failed.
+	ErrNotarizeFailed = errors.New("notarization failed")
+	// ErrSandboxAPFS indicates an attempt to create a sandbox-safe APFS image, which is unsupported.
+	ErrSandboxAPFS = errors.New("creating an APFS disk image that is sandbox safe is not supported")
+	// ErrNeedInit indicates Runner.Setup was not called before attempting operations.
+	ErrNeedInit = errors.New("runner not properly initialized, call Setup() first")
 )
 
 var (
@@ -33,18 +49,21 @@ func init() {
 	verboseLog = log.New(io.Discard, "hdiutil: ", 0)
 }
 
+// SetLogWriter configures the output writer for verbose logging.
+// By default, verbose logging is discarded. Pass os.Stdout or os.Stderr
+// to enable logging output.
 func SetLogWriter(w io.Writer) {
 	verboseLog.SetOutput(w)
 }
 
+// New creates a new Runner with the provided configuration.
+// The returned Runner must have Setup called before use.
 func New(c *Config) *Runner {
 	return &Runner{Config: c}
 }
 
-func (r *Runner) Setup() error {
-	return r.init()
-}
-
+// Runner orchestrates the DMG creation process, including image creation,
+// mounting, file copying, code signing, and notarization.
 type Runner struct {
 	*Config
 
@@ -67,12 +86,25 @@ type Runner struct {
 	cleanupFuncs []func()
 }
 
+// Setup validates the configuration and initializes the Runner for use.
+// It creates temporary directories and prepares internal state.
+// Must be called before Start or any other operation methods.
+// Returns an error if validation fails or temporary directory creation fails.
+func (r *Runner) Setup() error {
+	return r.init()
+}
+
+// Cleanup removes temporary files and directories created during the DMG build process.
+// Should be called when the Runner is no longer needed, typically via defer.
 func (r *Runner) Cleanup() {
 	for _, f := range r.cleanupFuncs {
 		f()
 	}
 }
 
+// Start begins the DMG creation process by creating a temporary writable disk image.
+// It uses either the standard or sandbox-safe creation method based on configuration.
+// Returns ErrNeedInit if Setup was not called first.
 func (r *Runner) Start() error {
 	if r.tmpDir == "" || r.tmpDmg == "" {
 		return ErrNeedInit
@@ -85,6 +117,9 @@ func (r *Runner) Start() error {
 	return r.createTempImage()
 }
 
+// AttachDiskImage mounts the temporary disk image and stores the mount point.
+// The image is attached with -nobrowse (hidden from Finder) and -noverify flags.
+// Returns ErrMountImage if attachment fails or the mount point cannot be determined.
 func (r *Runner) AttachDiskImage() error {
 	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
 	if err != nil {
@@ -102,11 +137,16 @@ func (r *Runner) AttachDiskImage() error {
 	return fmt.Errorf("%w: couldn't find mount point: %q", ErrMountImage, output)
 }
 
+// DetachDiskImage unmounts the disk image after fixing file permissions.
+// Should be called after all modifications to the mounted volume are complete.
 func (r *Runner) DetachDiskImage() error {
 	r.fixPermissions()
 	return r.runHdiutil("detach", r.mountDir)
 }
 
+// Bless marks the mounted volume as bootable using the bless command.
+// This operation is skipped if Config.Bless is false or if SandboxSafe mode is enabled.
+// Bless is typically used for bootable installer images.
 func (r *Runner) Bless() error {
 	r.fixPermissions()
 	if !r.Config.Bless {
@@ -121,6 +161,8 @@ func (r *Runner) Bless() error {
 	return r.runCommand("bless", "--folder", r.mountDir)
 }
 
+// FinalizeDMG converts the temporary writable image to the final compressed format
+// specified in the configuration (e.g., UDZO, UDBZ, ULFO, ULMO).
 func (r *Runner) FinalizeDMG() error {
 	return r.runHdiutil(r.setHdiutilVerbosity(slices.Concat(
 		[]string{"convert", r.tmpDmg},
@@ -129,6 +171,9 @@ func (r *Runner) FinalizeDMG() error {
 	)...)
 }
 
+// Codesign signs the final DMG with the specified signing identity and verifies the signature.
+// If no SigningIdentity is configured, this method returns nil without action.
+// Returns ErrCodesignFailed if signing or verification fails.
 func (r *Runner) Codesign() error {
 	if len(r.signOpt) == 0 {
 		verboseLog.Println("Skipping codesign")
@@ -148,6 +193,10 @@ func (r *Runner) Codesign() error {
 	return nil
 }
 
+// Notarize submits the DMG to Apple's notarization service and staples the ticket.
+// Requires NotarizeCredentials to be set with a valid keychain profile name.
+// If no credentials are configured, this method returns nil without action.
+// Returns ErrNotarizeFailed if notarization submission or stapling fails.
 func (r *Runner) Notarize() error {
 	if len(r.notarizeOpt) == 0 {
 		verboseLog.Println("Skipping notarization")
@@ -172,6 +221,9 @@ func (r *Runner) Notarize() error {
 	return nil
 }
 
+// createTempImage creates a writable temporary disk image using hdiutil create.
+// The image is created with the configured filesystem, size, and volume name,
+// populated with files from the source directory.
 func (r *Runner) createTempImage() error {
 	args := slices.Concat([]string{"create"},
 		r.fsOpts,
@@ -182,6 +234,9 @@ func (r *Runner) createTempImage() error {
 	return r.runHdiutil(r.setHdiutilVerbosity(args)...)
 }
 
+// createTempImageSandboxSafe creates a sandbox-safe temporary disk image.
+// Uses hdiutil makehybrid followed by convert, which produces images that
+// can be opened in sandboxed applications.
 func (r *Runner) createTempImageSandboxSafe() error {
 	args1 := r.setHdiutilVerbosity([]string{"makehybrid",
 		"-default-volume-name", r.volNameOpt, "-hfs", "-r", r.tmpDmg, r.srcDir})
@@ -195,6 +250,9 @@ func (r *Runner) createTempImageSandboxSafe() error {
 	return r.runHdiutil(args2...)
 }
 
+// setHdiutilVerbosity inserts the appropriate verbosity flag into hdiutil arguments.
+// Verbosity levels: 1 = quiet, 2 = verbose, 3+ = debug.
+// Returns the original args if verbosity is 0 or args is empty.
 func (r *Runner) setHdiutilVerbosity(args []string) []string {
 	if len(args) == 0 || r.HDIUtilVerbosity == 0 {
 		return args
@@ -219,8 +277,10 @@ func (r *Runner) setHdiutilVerbosity(args []string) []string {
 	}
 }
 
+// init validates configuration, resolves paths, and creates the temporary working directory.
+// Called by Setup to prepare the Runner for DMG creation operations.
 func (r *Runner) init() error {
-	if err := r.Config.validate(); err != nil {
+	if err := r.Validate(); err != nil {
 		return err
 	}
 
@@ -235,13 +295,9 @@ func (r *Runner) init() error {
 		r.volNameOpt = r.Config.VolumeName
 	}
 
-	r.formatOpts = r.Config.imageFormatToArgs()
-	r.fsOpts = r.Config.filesystemToArgs()
-
-	// check custom size if it's passed
-	if r.Config.VolumeSizeMb > 0 {
-		r.sizeOpts = []string{"-size", fmt.Sprintf("%dm", r.Config.VolumeSizeMb)}
-	}
+	r.formatOpts = r.imageFormatToOpts()
+	r.fsOpts = r.filesystemToOpts()
+	r.sizeOpts = r.volumeSizeToOpts()
 
 	// create a working directory
 	tmpDir, err := os.MkdirTemp("", "mkdmg-")
@@ -266,6 +322,8 @@ func (r *Runner) init() error {
 	return nil
 }
 
+// fixPermissions removes group and other write permissions from the mounted volume.
+// This is called automatically before detaching the image and is idempotent.
 func (r *Runner) fixPermissions() {
 	if r.permFixed {
 		return
@@ -281,6 +339,8 @@ func (r *Runner) fixPermissions() {
 	r.permFixed = true
 }
 
+// runHdiutil executes hdiutil with the given arguments.
+// In simulation mode, logs the command without executing it.
 func (r *Runner) runHdiutil(args ...string) error {
 	if r.Simulate {
 		verboseLog.Println("Simulating hdiutil command: ", args)
@@ -289,6 +349,8 @@ func (r *Runner) runHdiutil(args ...string) error {
 	return r.runCommand("hdiutil", args...)
 }
 
+// runHdiutilOutput executes hdiutil with the given arguments and returns the combined output.
+// In simulation mode, logs the command and returns empty string.
 func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
 	if r.Simulate {
 		verboseLog.Println("Simulating hdiutil command: ", args)
@@ -298,6 +360,8 @@ func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
 	return r.runCommandOutput("hdiutil", args...)
 }
 
+// runCommand executes an external command, directing stdout and stderr to os.Stdout and os.Stderr.
+// In simulation mode, returns nil without executing.
 func (r *Runner) runCommand(name string, args ...string) error {
 	verboseLog.Println("Running '", name, args)
 	if r.Simulate {
@@ -309,6 +373,8 @@ func (r *Runner) runCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
+// runCommandOutput executes an external command and returns the combined output as a string.
+// In simulation mode, returns empty string and nil error.
 func (r *Runner) runCommandOutput(name string, args ...string) (string, error) {
 	verboseLog.Println("Running '", name, args)
 	if r.Simulate {
