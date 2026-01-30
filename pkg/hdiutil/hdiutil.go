@@ -318,17 +318,10 @@ func (r *Runner) init() error {
 	r.srcDir = filepath.Clean(r.Config.SourceDir)
 	r.finalDmg = r.Config.OutputPath
 
-	// generate a volume name if empty
-	if len(r.Config.VolumeName) == 0 {
-		vname := strings.TrimSuffix(filepath.Base(r.Config.OutputPath), ".dmg")
-		r.volNameOpt = vname
-	} else {
-		r.volNameOpt = r.Config.VolumeName
-	}
-
-	r.formatOpts = r.imageFormatToOpts()
-	r.fsOpts = r.filesystemToOpts()
-	r.sizeOpts = r.volumeSizeToOpts()
+	r.volNameOpt = r.VolumeNameOpt()
+	r.formatOpts = r.ImageFormatOpts()
+	r.fsOpts = r.FilesystemOpts()
+	r.sizeOpts = r.VolumeSizeOpts()
 
 	// create a working directory
 	tmpDir, err := os.MkdirTemp("", "mkdmg-")
