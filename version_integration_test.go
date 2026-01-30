@@ -17,11 +17,6 @@ func TestVersionEmbedding(t *testing.T) {
 
 	// 1. Run go generate to create version.txt
 	target := "./internal/version"
-	versionFile := "./internal/version/version.txt"
-	defer func() {
-		// Optionally restore or remove the generated file
-		// _ = os.Remove(versionFile)
-	}()
 	genCmd := exec.Command("go", "generate", target)
 	genCmd.Stdout = os.Stdout
 	genCmd.Stderr = os.Stderr
