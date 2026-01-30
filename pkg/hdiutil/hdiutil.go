@@ -369,6 +369,7 @@ func (r *Runner) init() error {
 
 // fixPermissions removes group and other write permissions from the mounted volume.
 // This is called automatically before detaching the image and is idempotent.
+// TODO: handle errors instead of ignoring them quitely.
 func (r *Runner) fixPermissions() {
 	if r.permFixed {
 		return
