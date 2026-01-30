@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestMkdmgBasicCreation(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS-specific test on", runtime.GOOS)
+	}
 	// Create a temporary directory for source files
 	sourceDir := t.TempDir()
 	// Create a dummy file inside the source directory
@@ -24,11 +29,10 @@ func TestMkdmgBasicCreation(t *testing.T) {
 	mkdmgBinary := filepath.Join(t.TempDir(), "mkdmg")
 	t.Logf("Attempting to build mkdmg to: %s", mkdmgBinary)
 	cmdBuild := exec.Command("go", "build", "-o", mkdmgBinary, ".")
-	cmdBuild.Stdout = os.Stdout
-	cmdBuild.Stderr = os.Stderr
-	err = cmdBuild.Run()
-	if err != nil {
-		t.Fatalf("Failed to build mkdmg binary: %v", err)
+	var buildErr bytes.Buffer
+	cmdBuild.Stderr = &buildErr
+	if err := cmdBuild.Run(); err != nil {
+		t.Fatalf("Failed to build mkdmg binary: %v\n%s", err, buildErr.String())
 	}
 
 	// Check if the binary exists after building
@@ -39,11 +43,13 @@ func TestMkdmgBasicCreation(t *testing.T) {
 
 	// Run the mkdmg binary
 	cmdMkdmg := exec.Command(mkdmgBinary, outputDMG, sourceDir, "--volname", "TestVolume", "--disk-image-size", "10")
-	cmdMkdmg.Stdout = os.Stdout
-	cmdMkdmg.Stderr = os.Stderr
-	err = cmdMkdmg.Run()
-	if err != nil {
-		t.Fatalf("mkdmg command failed: %v", err)
+	var mkdmgErr bytes.Buffer
+	cmdMkdmg.Stderr = &mkdmgErr
+	if testing.Verbose() {
+		cmdMkdmg.Stdout = os.Stdout
+	}
+	if err := cmdMkdmg.Run(); err != nil {
+		t.Fatalf("mkdmg command failed: %v\n%s", err, mkdmgErr.String())
 	}
 
 	// Verify if the DMG file was created
