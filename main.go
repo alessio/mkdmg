@@ -46,13 +46,13 @@ func init() {
 	flag.BoolVar(&apfsFs, "apfs", false, "use APFS as disk image's filesystem (default: HFS+)")
 	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
-	flag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verboseMode - 3=debug)") // Changed from 'V' to 'x'
+	flag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)") // Changed from 'V' to 'x'
 	flag.BoolVarP(&simulate, "dry-run", "s", false, "simulate the process")
 	flag.BoolVar(&bless, "bless", false, "bless the disk image")
 	flag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
 	flag.BoolVarP(&helpMode, "help", "h", false, "display this help and exit.")
 	flag.BoolVarP(&versionMode, "version", "V", false, "output version information and exit.")
-	flag.BoolVarP(&verboseMode, "verboseMode", "v", false, "enable verboseMode mode")
+	flag.BoolVarP(&verboseMode, "verbose", "v", false, "enable verbose output")
 	flag.Usage = usage
 	flag.ErrHelp = nil
 
@@ -81,6 +81,10 @@ func main() {
 	var err error
 
 	if configPath != "" {
+		if flag.NArg() != 0 && flag.NArg() != 2 {
+			log.Fatalln("invalid arguments: provide either a config file alone, or a config file plus exactly two positional arguments (output path and source dir) to override")
+		}
+
 		cfg, err = hdiutil.LoadConfig(configPath)
 		if err != nil {
 			log.Fatalf("failed to load config: %v", err)

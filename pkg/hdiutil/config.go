@@ -61,7 +61,17 @@ type Config struct {
 
 // FromJSON populates the Config from a JSON reader.
 func (c *Config) FromJSON(r io.Reader) error {
-	return json.NewDecoder(r).Decode(c)
+	var tmp Config
+	if err := json.NewDecoder(r).Decode(&tmp); err != nil {
+		return err
+	}
+	*c = tmp
+	c.valid = false
+	c.FilesystemOpts = nil
+	c.ImageFormatOpts = nil
+	c.VolumeSizeOpts = nil
+	c.VolumeNameOpt = nil
+	return nil
 }
 
 // ToJSON writes the Config to a JSON writer.
