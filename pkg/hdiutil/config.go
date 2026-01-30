@@ -1,7 +1,10 @@
 package hdiutil
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -13,46 +16,75 @@ type OptFn[T string | []string] func() T
 // Config holds the configuration for creating a DMG disk image.
 type Config struct {
 	// VolumeName is the name of the mounted volume. If empty, it defaults to the output filename without extension.
-	VolumeName string
+	VolumeName string `json:"volume_name,omitempty"`
 	// VolumeSizeMb specifies the volume size in megabytes. If zero, hdiutil determines the size automatically.
-	VolumeSizeMb int64
+	VolumeSizeMb int64 `json:"volume_size_mb,omitempty"`
 	// SandboxSafe enables sandbox-safe mode. Cannot be used with APFS filesystem.
-	SandboxSafe bool
+	SandboxSafe bool `json:"sandbox_safe,omitempty"`
 	// Bless marks the volume as bootable.
-	Bless bool
+	Bless bool `json:"bless,omitempty"`
 	// FileSystem specifies the filesystem type (e.g., "HFS+", "APFS"). Defaults to "HFS+".
-	FileSystem      string
-	SigningIdentity string
+	FileSystem string `json:"filesystem,omitempty"`
+	// SigningIdentity specifies the signing identity to use.
+	SigningIdentity string `json:"signing_identity,omitempty"`
 	// NotarizeCredentials contains credentials for Apple notarization.
-	NotarizeCredentials string
+	NotarizeCredentials string `json:"notarize_credentials,omitempty"`
 	// ImageFormat specifies the DMG format (e.g., "UDZO", "UDBZ", "ULFO", "ULMO"). Defaults to "UDZO".
-	ImageFormat string
+	ImageFormat string `json:"image_format,omitempty"`
 
 	// HDIUtilVerbosity controls the verbosity level of hdiutil output.
-	HDIUtilVerbosity int
+	HDIUtilVerbosity int `json:"hdiutil_verbosity,omitempty"`
 
 	// OutputPath is the destination path for the created DMG file. Must have .dmg extension.
-	OutputPath string
+	OutputPath string `json:"output_path,omitempty"`
 	// SourceDir is the directory containing files to include in the DMG.
-	SourceDir string
+	SourceDir string `json:"source_dir,omitempty"`
 
 	// Simulate enables dry-run mode without actually creating the DMG.
-	Simulate bool
+	Simulate bool `json:"simulate,omitempty"`
 
 	valid bool
 
 	// FilesystemOpts returns the hdiutil arguments for the configured filesystem.
 	// Only available after calling Validate.
-	FilesystemOpts OptFn[[]string]
+	FilesystemOpts OptFn[[]string] `json:"-"`
 	// ImageFormatOpts returns the hdiutil arguments for the configured image format.
 	// Only available after calling Validate.
-	ImageFormatOpts OptFn[[]string]
+	ImageFormatOpts OptFn[[]string] `json:"-"`
 	// VolumeSizeOpts returns the hdiutil arguments for the configured volume size.
 	// Only available after calling Validate.
-	VolumeSizeOpts OptFn[[]string]
+	VolumeSizeOpts OptFn[[]string] `json:"-"`
 	// VolumeNameOpt returns the resolved volume name.
 	// Only available after calling Validate.
-	VolumeNameOpt OptFn[string]
+	VolumeNameOpt OptFn[string] `json:"-"`
+}
+
+// FromJSON populates the Config from a JSON reader.
+func (c *Config) FromJSON(r io.Reader) error {
+	return json.NewDecoder(r).Decode(c)
+}
+
+// ToJSON writes the Config to a JSON writer.
+func (c *Config) ToJSON(w io.Writer) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(c)
+}
+
+// LoadConfig reads the configuration from a JSON file.
+func LoadConfig(path string) (*Config, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	cfg := &Config{}
+	if err := cfg.FromJSON(f); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
 // Validate checks the configuration for errors and initializes the option functions.
