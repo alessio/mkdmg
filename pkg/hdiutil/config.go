@@ -65,12 +65,13 @@ func (c *Config) FromJSON(r io.Reader) error {
 	if err := json.NewDecoder(r).Decode(&tmp); err != nil {
 		return err
 	}
+	// Ensure validation is required after (re)loading.
+	tmp.valid = false
+	tmp.FilesystemOpts = nil
+	tmp.ImageFormatOpts = nil
+	tmp.VolumeSizeOpts = nil
+	tmp.VolumeNameOpt = nil
 	*c = tmp
-	c.valid = false
-	c.FilesystemOpts = nil
-	c.ImageFormatOpts = nil
-	c.VolumeSizeOpts = nil
-	c.VolumeNameOpt = nil
 	return nil
 }
 
