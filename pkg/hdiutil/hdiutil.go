@@ -21,11 +21,13 @@ import (
 var (
 	// ErrInvSourceDir indicates the source directory is empty or invalid.
 	ErrInvSourceDir = errors.New("invalid source directory")
+	// ErrVolumeSize indicates that a negative volume size.
+	ErrVolumeSize = errors.New("volume size must be >= 0")
 	// ErrInvFormatOpt indicates an unsupported image format was specified.
 	ErrInvFormatOpt = errors.New("invalid image format")
 	// ErrInvFilesystemOpt indicates an unsupported filesystem type was specified.
 	ErrInvFilesystemOpt = errors.New("invalid image filesystem")
-	// ErrCreateDir indicates failure to create a temporary working directory.
+	// ErrCreateDir indicates a failure to create a temporary working directory.
 	ErrCreateDir = errors.New("couldn't create directory")
 	// ErrImageFileExt indicates the output path doesn't have a .dmg extension.
 	ErrImageFileExt = errors.New("output file must have a .dmg extension")

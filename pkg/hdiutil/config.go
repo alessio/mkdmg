@@ -21,7 +21,7 @@ type Config struct {
 	// Bless marks the volume as bootable.
 	Bless bool
 	// FileSystem specifies the filesystem type (e.g., "HFS+", "APFS"). Defaults to "HFS+".
-	FileSystem string
+	FileSystem      string
 	SigningIdentity string
 	// NotarizeCredentials contains credentials for Apple notarization.
 	NotarizeCredentials string
@@ -67,6 +67,10 @@ func (c *Config) Validate() error {
 	c.valid = false
 	if len(c.SourceDir) == 0 {
 		return ErrInvSourceDir
+	}
+
+	if c.VolumeSizeMb < 0 {
+		return ErrVolumeSize
 	}
 
 	if filepath.Ext(c.OutputPath) != ".dmg" {
