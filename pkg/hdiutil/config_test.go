@@ -2,6 +2,7 @@ package hdiutil_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -45,9 +46,9 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: hdiutil.ErrInvFormatOpt,
 		},
 		{
-			name:    "lowercase_format_returns_error",
+			name:    "valid_with_lowercase_format",
 			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", ImageFormat: "udzo"},
-			wantErr: hdiutil.ErrInvFormatOpt,
+			wantErr: nil,
 		},
 
 		// FileSystem validation
@@ -238,6 +239,11 @@ func TestConfig_ImageFormatOpts(t *testing.T) {
 			format:   "ULMO",
 			wantOpts: []string{"-format", "ULMO"},
 		},
+		{
+			name:     "lowercase_udzo",
+			format:   "udzo",
+			wantOpts: []string{"-format", "UDZO", "-imagekey", "zlib-level=9"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -257,42 +263,54 @@ func TestConfig_ImageFormatOpts(t *testing.T) {
 
 func TestConfig_VolumeSizeOpts(t *testing.T) {
 	tests := []struct {
-		name     string
-		sizeMb   int64
-		wantOpts []string
+		name    string
+		sizeMb  int64
+		wantErr error
 	}{
 		{
-			name:     "positive_size",
-			sizeMb:   100,
-			wantOpts: []string{"-size", "100m"},
+			name:   "positive_size",
+			sizeMb: 100,
 		},
 		{
-			name:     "large_size",
-			sizeMb:   4096,
-			wantOpts: []string{"-size", "4096m"},
+			name:   "large_size",
+			sizeMb: 4096,
 		},
 		{
-			name:     "zero_size_returns_nil",
-			sizeMb:   0,
-			wantOpts: nil,
+			name:   "zero_size",
+			sizeMb: 0,
 		},
 		{
-			name:     "negative_size_returns_nil",
-			sizeMb:   -50,
-			wantOpts: nil,
+			name:    "negative_size_returns_error",
+			sizeMb:  -50,
+			wantErr: hdiutil.ErrVolumeSize,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", VolumeSizeMb: tt.sizeMb}
-			if err := cfg.Validate(); err != nil {
+			err := cfg.Validate()
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("Validate() error = %v, want %v", err, tt.wantErr)
+				}
+				return
+			}
+
+			if err != nil {
 				t.Fatalf("Validate() error = %v", err)
 			}
 
 			got := cfg.VolumeSizeOpts()
-			if !reflect.DeepEqual(got, tt.wantOpts) {
-				t.Errorf("VolumeSizeOpts() = %v, want %v", got, tt.wantOpts)
+			if tt.sizeMb > 0 {
+				want := []string{"-size", fmt.Sprintf("%dm", tt.sizeMb)}
+				if !reflect.DeepEqual(got, want) {
+					t.Errorf("VolumeSizeOpts() = %v, want %v", got, want)
+				}
+			} else {
+				if got != nil {
+					t.Errorf("VolumeSizeOpts() = %v, want nil", got)
+				}
 			}
 		})
 	}

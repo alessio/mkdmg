@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
 	"al.essio.dev/cmd/mkdmg/internal/version"
+	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
 
 	flag "github.com/spf13/pflag"
 )
@@ -44,7 +44,7 @@ func init() {
 	flag.BoolVar(&apfsFs, "apfs", false, "use APFS as disk image's filesystem (default: HFS+)")
 	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
-	flag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "V", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verboseMode - 3=debug)")
+	flag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verboseMode - 3=debug)") // Changed from 'V' to 'x'
 	flag.BoolVarP(&simulate, "dry-run", "s", false, "simulate the process")
 	flag.BoolVar(&bless, "bless", false, "bless the disk image")
 	flag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
