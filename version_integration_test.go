@@ -10,6 +10,7 @@ import (
 )
 
 func TestVersionEmbedding(t *testing.T) {
+	t.Parallel()
 	// Ensure we can run git
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not found, skipping version embedding test")
@@ -27,7 +28,7 @@ func TestVersionEmbedding(t *testing.T) {
 	// 2. Build the binary
 	tmpDir := t.TempDir()
 	binaryPath := filepath.Join(tmpDir, "mkdmg-version-test")
-	
+
 	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
@@ -40,7 +41,7 @@ func TestVersionEmbedding(t *testing.T) {
 	var out bytes.Buffer
 	versionCmd.Stdout = &out
 	versionCmd.Stderr = os.Stderr
-	
+
 	if err := versionCmd.Run(); err != nil {
 		t.Fatalf("failed to run produced binary with --version: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestVersionEmbedding(t *testing.T) {
 	if !strings.Contains(output, "mkdmg, version") {
 		t.Errorf("Output does not contain 'mkdmg, version'. Got:\n%s", output)
 	}
-	
+
 	// Check that it's not unknown or empty if git is working
 	lines := strings.Split(output, "\n")
 	if len(lines) > 0 {

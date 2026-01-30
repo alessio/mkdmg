@@ -10,6 +10,7 @@ import (
 )
 
 func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  hdiutil.Config
@@ -120,6 +121,7 @@ func TestConfig_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.config.Validate()
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -133,6 +135,7 @@ func TestConfig_Validate(t *testing.T) {
 }
 
 func TestConfig_Validate_SetsValidFlag(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg"}
 
 	// Before validation, OptFn fields should be nil
@@ -161,6 +164,7 @@ func TestConfig_Validate_SetsValidFlag(t *testing.T) {
 }
 
 func TestConfig_FilesystemOpts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		fs       string
@@ -195,6 +199,7 @@ func TestConfig_FilesystemOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", FileSystem: tt.fs}
 			if err := cfg.Validate(); err != nil {
 				t.Fatalf("Validate() error = %v", err)
@@ -209,6 +214,7 @@ func TestConfig_FilesystemOpts(t *testing.T) {
 }
 
 func TestConfig_ImageFormatOpts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		format   string
@@ -248,6 +254,7 @@ func TestConfig_ImageFormatOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", ImageFormat: tt.format}
 			if err := cfg.Validate(); err != nil {
 				t.Fatalf("Validate() error = %v", err)
@@ -262,6 +269,7 @@ func TestConfig_ImageFormatOpts(t *testing.T) {
 }
 
 func TestConfig_VolumeSizeOpts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		sizeMb  int64
@@ -288,6 +296,7 @@ func TestConfig_VolumeSizeOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", VolumeSizeMb: tt.sizeMb}
 			err := cfg.Validate()
 			if tt.wantErr != nil {
@@ -317,6 +326,7 @@ func TestConfig_VolumeSizeOpts(t *testing.T) {
 }
 
 func TestConfig_VolumeNameOpt(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		volumeName string
@@ -363,6 +373,7 @@ func TestConfig_VolumeNameOpt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: tt.outputPath, VolumeName: tt.volumeName}
 			if err := cfg.Validate(); err != nil {
 				t.Fatalf("Validate() error = %v", err)
@@ -377,6 +388,7 @@ func TestConfig_VolumeNameOpt(t *testing.T) {
 }
 
 func TestConfig_OptFn_PanicWithoutValidation(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name   string
 		invoke func(cfg *hdiutil.Config)
@@ -401,6 +413,7 @@ func TestConfig_OptFn_PanicWithoutValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg"}
 			// Intentionally NOT calling cfg.Validate()
 
@@ -416,6 +429,7 @@ func TestConfig_OptFn_PanicWithoutValidation(t *testing.T) {
 }
 
 func TestConfig_Validate_Idempotent(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", VolumeName: "Test"}
 
 	// Call Validate multiple times
@@ -432,14 +446,15 @@ func TestConfig_Validate_Idempotent(t *testing.T) {
 }
 
 func TestConfig_ValidationOrder(t *testing.T) {
+	t.Parallel()
 	// Test that validation checks are performed in the expected order
 	// Empty SourceDir should be caught before other validations
 
 	cfg := hdiutil.Config{
-		SourceDir:   "",           // Invalid
-		OutputPath:  "test.iso",   // Also invalid
-		ImageFormat: "INVALID",    // Also invalid
-		FileSystem:  "EXT4",       // Also invalid
+		SourceDir:   "",         // Invalid
+		OutputPath:  "test.iso", // Also invalid
+		ImageFormat: "INVALID",  // Also invalid
+		FileSystem:  "EXT4",     // Also invalid
 	}
 
 	err := cfg.Validate()
@@ -450,6 +465,7 @@ func TestConfig_ValidationOrder(t *testing.T) {
 }
 
 func TestConfig_EdgeCases(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  hdiutil.Config
@@ -493,6 +509,7 @@ func TestConfig_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.config.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
@@ -502,10 +519,12 @@ func TestConfig_EdgeCases(t *testing.T) {
 }
 
 func TestConfig_MultipleFormatsValidation(t *testing.T) {
+	t.Parallel()
 	formats := []string{"UDZO", "UDBZ", "ULFO", "ULMO", ""}
 
 	for _, format := range formats {
 		t.Run("format_"+format, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:   "src",
 				OutputPath:  "test.dmg",
@@ -521,6 +540,7 @@ func TestConfig_MultipleFormatsValidation(t *testing.T) {
 }
 
 func TestConfig_PathWithSpaces(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "source with spaces",
 		OutputPath: "output with spaces.dmg",
@@ -539,6 +559,7 @@ func TestConfig_PathWithSpaces(t *testing.T) {
 }
 
 func TestConfig_SpecialCharactersInPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		outputPath string
@@ -568,6 +589,7 @@ func TestConfig_SpecialCharactersInPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:  "src",
 				OutputPath: tt.outputPath,
@@ -582,6 +604,7 @@ func TestConfig_SpecialCharactersInPaths(t *testing.T) {
 }
 
 func TestConfig_ValidateAfterModification(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "src",
 		OutputPath: "test.dmg",
@@ -613,6 +636,7 @@ func TestConfig_ValidateAfterModification(t *testing.T) {
 }
 
 func TestConfig_ZeroValueConfig(t *testing.T) {
+	t.Parallel()
 	var cfg hdiutil.Config
 
 	// Zero value config should fail validation
@@ -627,6 +651,7 @@ func TestConfig_ZeroValueConfig(t *testing.T) {
 }
 
 func TestConfig_BothBlessAndSandboxSafe(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:   "src",
 		OutputPath:  "test.dmg",
@@ -643,12 +668,14 @@ func TestConfig_BothBlessAndSandboxSafe(t *testing.T) {
 }
 
 func TestConfig_AllImageFormatsWithAllFilesystems(t *testing.T) {
+	t.Parallel()
 	formats := []string{"UDZO", "UDBZ", "ULFO", "ULMO"}
 	filesystems := []string{"HFS+", "APFS"}
 
 	for _, format := range formats {
 		for _, fs := range filesystems {
 			t.Run("format_"+format+"_fs_"+fs, func(t *testing.T) {
+				t.Parallel()
 				cfg := hdiutil.Config{
 					SourceDir:   "src",
 					OutputPath:  "test.dmg",
@@ -676,6 +703,7 @@ func TestConfig_AllImageFormatsWithAllFilesystems(t *testing.T) {
 }
 
 func TestConfig_OutputPathExtensionCaseSensitive(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		outputPath string
@@ -689,6 +717,7 @@ func TestConfig_OutputPathExtensionCaseSensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:  "src",
 				OutputPath: tt.outputPath,
@@ -703,6 +732,7 @@ func TestConfig_OutputPathExtensionCaseSensitive(t *testing.T) {
 }
 
 func TestConfig_VolumeNameFromComplexPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		outputPath string
@@ -727,6 +757,7 @@ func TestConfig_VolumeNameFromComplexPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:  "src",
 				OutputPath: tt.outputPath,

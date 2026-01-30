@@ -14,6 +14,7 @@ func TestMkdmgBasicCreation(t *testing.T) {
 		t.Skip("hdiutil not available, skipping integration test")
 	}
 
+	t.Parallel()
 	// Create a temporary directory for source files
 	sourceDir := t.TempDir()
 	// Create a dummy file inside the source directory

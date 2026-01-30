@@ -10,6 +10,7 @@ import (
 )
 
 func TestSetLogWriter(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	hdiutil.SetLogWriter(&buf)
 	// Restore to discard after test
@@ -19,6 +20,7 @@ func TestSetLogWriter(t *testing.T) {
 }
 
 func TestConfigValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  hdiutil.Config
@@ -118,6 +120,7 @@ func TestConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.config.Validate()
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -131,6 +134,7 @@ func TestConfigValidation(t *testing.T) {
 }
 
 func TestImageFormats(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		format      string
@@ -147,6 +151,7 @@ func TestImageFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:   "test",
 				OutputPath:  "test.dmg",
@@ -166,6 +171,7 @@ func TestImageFormats(t *testing.T) {
 }
 
 func TestFilesystems(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		fs      string
@@ -181,6 +187,7 @@ func TestFilesystems(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:  "test",
 				OutputPath: "test.dmg",
@@ -200,6 +207,7 @@ func TestFilesystems(t *testing.T) {
 }
 
 func TestVolumeNameGeneration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		volumeName     string
@@ -228,6 +236,7 @@ func TestVolumeNameGeneration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:  "test",
 				OutputPath: tt.outputPath,
@@ -249,6 +258,7 @@ func TestVolumeNameGeneration(t *testing.T) {
 }
 
 func TestVolumeSizeOpts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		sizeMb  int64
@@ -262,6 +272,7 @@ func TestVolumeSizeOpts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:    "test",
 				OutputPath:   "test.dmg",
@@ -287,6 +298,7 @@ func TestVolumeSizeOpts(t *testing.T) {
 }
 
 func TestStartWithoutSetup(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "test",
 		OutputPath: "test.dmg",
@@ -303,6 +315,7 @@ func TestStartWithoutSetup(t *testing.T) {
 }
 
 func TestRunnerSimulateMode(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "test",
 		OutputPath: "test.dmg",
@@ -323,6 +336,7 @@ func TestRunnerSimulateMode(t *testing.T) {
 }
 
 func TestRunnerSandboxSafeMode(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:   "test",
 		OutputPath:  "test.dmg",
@@ -344,6 +358,7 @@ func TestRunnerSandboxSafeMode(t *testing.T) {
 }
 
 func TestCodesignSkipped(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:       "test",
 		OutputPath:      "test.dmg",
@@ -365,6 +380,7 @@ func TestCodesignSkipped(t *testing.T) {
 }
 
 func TestNotarizeSkipped(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:           "test",
 		OutputPath:          "test.dmg",
@@ -386,6 +402,7 @@ func TestNotarizeSkipped(t *testing.T) {
 }
 
 func TestBlessSkipped(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		bless       bool
@@ -397,6 +414,7 @@ func TestBlessSkipped(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:   "test",
 				OutputPath:  "test.dmg",
@@ -420,6 +438,7 @@ func TestBlessSkipped(t *testing.T) {
 }
 
 func TestHDIUtilVerbosityLevels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		verbosity int
@@ -433,6 +452,7 @@ func TestHDIUtilVerbosityLevels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := hdiutil.Config{
 				SourceDir:        "test",
 				OutputPath:       "test.dmg",
@@ -456,6 +476,7 @@ func TestHDIUtilVerbosityLevels(t *testing.T) {
 }
 
 func TestCleanup(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "test",
 		OutputPath: "test.dmg",
@@ -474,6 +495,7 @@ func TestCleanup(t *testing.T) {
 }
 
 func TestOptFnPanicWithoutValidation(t *testing.T) {
+	t.Parallel()
 	cfg := hdiutil.Config{
 		SourceDir:  "test",
 		OutputPath: "test.dmg",
@@ -493,6 +515,7 @@ func TestOptFnPanicWithoutValidation(t *testing.T) {
 
 // TestInit preserves the original test for backward compatibility
 func TestInit(t *testing.T) {
+	t.Parallel()
 	hdiutil.SetLogWriter(os.Stderr)
 	configs := []hdiutil.Config{
 		{
