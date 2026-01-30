@@ -146,14 +146,15 @@ func (r *Runner) Start() error {
 // AttachDiskImage mounts the temporary disk image and stores the mount point.
 // The image is attached with -nobrowse (hidden from Finder) and -noverify flags.
 // Returns ErrMountImage if it fails or the mount point cannot be determined.
+// AttachDiskImage mounts the temporary disk image and stores the mount point.
+// The image is attached with -nobrowse (hidden from Finder) and -noverify flags.
+// Returns ErrMountImage if it fails or the mount point cannot be determined.
 func (r *Runner) AttachDiskImage() error {
-	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
-
-	if r.Simulate || (output == "" && r.Simulate) {
-		r.mountDir = "/Volumes/" + strings.TrimSuffix(filepath.Base(r.tmpDmg), ".dmg")
+	if r.Simulate {
+		r.mountDir = filepath.Join(r.tmpDir, "SIMULATED_MOUNT")
 		return nil
 	}
-
+	output, err := r.runHdiutilOutput("attach", "-nobrowse", "-noverify", r.tmpDmg)
 	if err != nil {
 		return fmt.Errorf("%w: %s", ErrMountImage, output)
 	}
