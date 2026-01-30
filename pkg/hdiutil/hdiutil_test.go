@@ -250,13 +250,14 @@ func TestVolumeNameGeneration(t *testing.T) {
 
 func TestVolumeSizeOpts(t *testing.T) {
 	tests := []struct {
-		name     string
-		sizeMb   int64
-		wantOpts bool
+		name    string
+		sizeMb  int64
+		wantErr bool
+		hasOpts bool
 	}{
-		{"positive_size", 100, true},
-		{"zero_size", 0, false},
-		{"negative_size", -1, false},
+		{"positive_size", 100, false, true},
+		{"zero_size", 0, false, false},
+		{"negative_size", -1, true, false},
 	}
 
 	for _, tt := range tests {
@@ -269,14 +270,17 @@ func TestVolumeSizeOpts(t *testing.T) {
 			}
 
 			err := cfg.Validate()
-			if err != nil {
-				t.Fatalf("Validate() unexpected error = %v", err)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Validate() unexpected error = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
 			}
 
 			opts := cfg.VolumeSizeOpts()
-			hasOpts := len(opts) > 0
-			if hasOpts != tt.wantOpts {
-				t.Errorf("VolumeSizeOpts() returned %v opts, wantOpts = %v", opts, tt.wantOpts)
+			if (len(opts) > 0) != tt.hasOpts {
+				t.Errorf("VolumeSizeOpts() returned %v opts, wantOpts = %v", opts, tt.hasOpts)
 			}
 		})
 	}

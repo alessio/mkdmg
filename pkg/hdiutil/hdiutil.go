@@ -79,13 +79,27 @@ func (e *realCommandExecutor) RunOutput(name string, args ...string) (string, er
 	return string(output), err
 }
 
+// Option is a functional option for configuring a Runner.
+type Option func(*Runner)
+
+// WithExecutor sets a custom command executor for testing.
+func WithExecutor(e CommandExecutor) Option {
+	return func(r *Runner) {
+		r.executor = e
+	}
+}
+
 // New creates a new Runner with the provided configuration.
 // The returned Runner must have Setup called before use.
-func New(c *Config) *Runner {
-	return &Runner{
+func New(c *Config, opts ...Option) *Runner {
+	r := &Runner{
 		Config:   c,
 		executor: &realCommandExecutor{},
 	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
 // Runner orchestrates the DMG creation process, including image creation,
@@ -174,6 +188,10 @@ func (r *Runner) AttachDiskImage() error {
 // DetachDiskImage unmounts the disk image after fixing file permissions.
 // Should be called after all modifications to the mounted volume are complete.
 func (r *Runner) DetachDiskImage() error {
+	if r.Simulate {
+		verboseLog.Println("Simulating detach of disk image")
+		return nil
+	}
 	r.fixPermissions()
 	return r.runHdiutil("detach", r.mountDir)
 }
@@ -247,7 +265,7 @@ func (r *Runner) Notarize() error {
 	verboseLog.Println("Stapling the notarization ticket")
 	if output, err := r.runCommandOutput(
 		"xcrun", "stapler", "staple", r.finalDmg); err != nil {
-		return fmt.Errorf("%w: stapler failed: %v", ErrNotarizeFailed, output)
+		return fmt.Errorf("%w: stapler failed: %v (output: %s)", ErrNotarizeFailed, err, output)
 	}
 
 	verboseLog.Println("Notarization complete")
@@ -279,7 +297,7 @@ func (r *Runner) createTempImageSandboxSafe() error {
 	}
 
 	args2 := r.setHdiutilVerbosity([]string{"convert",
-		"-format", "UDRW", "-ov", "-r", r.tmpDmg, r.tmpDmg})
+		r.tmpDmg, "-format", "UDRW", "-ov", "-o", r.tmpDmg})
 
 	return r.runHdiutil(args2...)
 }
@@ -369,21 +387,12 @@ func (r *Runner) fixPermissions() {
 // runHdiutil executes hdiutil with the given arguments.
 // In simulation mode, logs the command without executing it.
 func (r *Runner) runHdiutil(args ...string) error {
-	if r.Simulate {
-		verboseLog.Println("Simulating hdiutil command: ", args)
-		return nil
-	}
 	return r.runCommand("hdiutil", args...)
 }
 
 // runHdiutilOutput executes hdiutil with the given arguments and returns the combined output.
-// In simulation mode, logs the command and returns empty string.
+// In simulation mode, logs the command and returns an empty string.
 func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
-	if r.Simulate {
-		verboseLog.Println("Simulating hdiutil command: ", args)
-		return "", nil
-	}
-
 	return r.runCommandOutput("hdiutil", args...)
 }
 
