@@ -56,16 +56,42 @@ func SetLogWriter(w io.Writer) {
 	verboseLog.SetOutput(w)
 }
 
+// CommandExecutor defines the interface for executing external commands.
+type CommandExecutor interface {
+	Run(name string, args ...string) error
+	RunOutput(name string, args ...string) (string, error)
+}
+
+type realCommandExecutor struct{}
+
+func (e *realCommandExecutor) Run(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (e *realCommandExecutor) RunOutput(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
 // New creates a new Runner with the provided configuration.
 // The returned Runner must have Setup called before use.
 func New(c *Config) *Runner {
-	return &Runner{Config: c}
+	return &Runner{
+		Config:   c,
+		executor: &realCommandExecutor{},
+	}
 }
 
 // Runner orchestrates the DMG creation process, including image creation,
 // mounting, file copying, code signing, and notarization.
 type Runner struct {
 	*Config
+
+	executor CommandExecutor
 
 	formatOpts  []string
 	sizeOpts    []string
@@ -359,27 +385,20 @@ func (r *Runner) runHdiutilOutput(args ...string) (string, error) {
 	return r.runCommandOutput("hdiutil", args...)
 }
 
-// runCommand executes an external command, directing stdout and stderr to os.Stdout and os.Stderr.
-// In simulation mode, returns nil without executing.
+// runCommand executes an external command.
 func (r *Runner) runCommand(name string, args ...string) error {
 	verboseLog.Println("Running '", name, args)
 	if r.Simulate {
 		return nil
 	}
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return r.executor.Run(name, args...)
 }
 
 // runCommandOutput executes an external command and returns the combined output as a string.
-// In simulation mode, returns empty string and nil error.
 func (r *Runner) runCommandOutput(name string, args ...string) (string, error) {
 	verboseLog.Println("Running '", name, args)
 	if r.Simulate {
 		return "", nil
 	}
-	cmd := exec.Command(name, args...)
-	output, err := cmd.CombinedOutput()
-	return string(output), err
+	return r.executor.RunOutput(name, args...)
 }

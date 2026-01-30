@@ -1,21 +1,44 @@
 #!/usr/bin/make -f
 
-all: mkdmg check
+BIN := mkdmg
+GO := go
+PKGS := ./...
 
-mkdmg: generate
-	go build
+.PHONY: all
+all: build check
 
-check:
-	go test -v -race ./...
+.PHONY: build
+build: generate
+	$(GO) build -o $(BIN)
 
-generate: mod-tidy
-	go generate ./internal/...
+.PHONY: install
+install: generate
+	$(GO) install
 
-mod-tidy: go.mod
-	go mod tidy
+.PHONY: check
+check: generate
+	$(GO) test -v -race $(PKGS)
 
-distclean: clean
+.PHONY: generate
+generate:
+	$(GO) generate ./internal/...
+
+.PHONY: lint
+lint:
+	golangci-lint run
+
+.PHONY: fmt
+fmt:
+	$(GO) fmt $(PKGS)
+
+.PHONY: mod-tidy
+mod-tidy:
+	$(GO) mod tidy
+
+.PHONY: clean
 clean:
-	rm -fv mkdmg
+	rm -f $(BIN)
+	rm -f coverage.out
 
-.PHONY: all check clean distclean mkdmg mod-tidy generate
+.PHONY: distclean
+distclean: clean
