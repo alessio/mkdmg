@@ -64,6 +64,7 @@ type Config struct {
 //   - FileSystem is invalid
 //   - SandboxSafe is enabled with APFS filesystem
 func (c *Config) Validate() error {
+	c.valid = false
 	if len(c.SourceDir) == 0 {
 		return ErrInvSourceDir
 	}
