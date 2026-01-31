@@ -1,8 +1,3 @@
-// Package hdiutil provides a Go wrapper around macOS hdiutil command-line tool
-// for creating, manipulating, and signing DMG disk images.
-//
-// The package supports various DMG formats (UDZO, UDBZ, ULFO, ULMO) and filesystems
-// (HFS+, APFS), as well as optional code signing and Apple notarization.
 package hdiutil
 
 import (
