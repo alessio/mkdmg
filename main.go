@@ -178,6 +178,7 @@ func checkErr(err error) {
 
 func usage() {
 	fmt.Printf("Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
+	fmt.Printf("       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
 	fmt.Print(flag.CommandLine.FlagUsages())
 }
 
