@@ -33,10 +33,31 @@
 
 ## 📦 Installation
 
+### Pre-built Binaries
+
+You can download the latest pre-built binaries for macOS (Darwin) and Linux from the [GitHub Releases page](https://github.com/alessio/mkdmg/releases).
+
+1.  Visit the [releases page](https://github.com/alessio/mkdmg/releases).
+2.  Download the archive matching your operating system and architecture.
+3.  Extract the archive and move the `mkdmg` binary to a directory in your `PATH` (e.g., `/usr/local/bin`).
+
+### From Source
+
 You can install `mkdmg` directly using `go install`:
 
 ```sh
 go install al.essio.dev/cmd/mkdmg@latest
+```
+
+### Verification
+
+To verify the integrity of the downloaded binary, you can use the `checksums.txt` file provided in the [GitHub Releases](https://github.com/alessio/mkdmg/releases).
+
+1. Download the binary archive and the `checksums.txt` file.
+2. Run the following command to verify the checksum:
+
+```sh
+sha256sum -c checksums.txt --ignore-missing
 ```
 
 ## 🚀 Usage
