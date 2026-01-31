@@ -152,7 +152,7 @@ func (r *Runner) Start() error {
 		return ErrNeedInit
 	}
 
-	if r.Config.SandboxSafe {
+	if r.SandboxSafe {
 		return r.createTempImageSandboxSafe()
 	}
 
@@ -336,8 +336,8 @@ func (r *Runner) init() error {
 		return err
 	}
 
-	r.srcDir = filepath.Clean(r.Config.SourceDir)
-	r.finalDmg = r.Config.OutputPath
+	r.srcDir = filepath.Clean(r.SourceDir)
+	r.finalDmg = r.OutputPath
 
 	r.volNameOpt = r.VolumeNameOpt()
 	r.formatOpts = r.ImageFormatOpts()
@@ -361,8 +361,8 @@ func (r *Runner) init() error {
 
 	r.tmpDmg = filepath.Join(tmpDir, "temp.dmg")
 	// signingIdentity
-	r.signOpt = r.Config.SigningIdentity
-	r.notarizeOpt = r.Config.NotarizeCredentials
+	r.signOpt = r.SigningIdentity
+	r.notarizeOpt = r.NotarizeCredentials
 
 	return nil
 }
