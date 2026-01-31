@@ -64,7 +64,7 @@ Here is a list of all available command-line flags:
 
 | `--hdiutil-verbosity` |           | Set `hdiutil` verbosity (0=default, 1=quiet, 2=verbose, 3=debug).             | 0            |
 
-| `--verboseMode`       | `-v`      | Enable verbose output for `mkdmg`.                                          | `false`      |
+| `--verbose`           | `-v`      | Enable verbose output for `mkdmg`.                                          | `false`      |
 
 | `--version`           | `-V`      | Print version information and exit.                                         | `false`      |
 
