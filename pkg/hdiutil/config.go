@@ -84,7 +84,11 @@ func (c *Config) ToJSON(w io.Writer) error {
 
 // LoadConfig reads the configuration from a JSON file.
 func LoadConfig(path string) (*Config, error) {
-	f, err := os.Open(path)
+	// Clean the path to ensure it is normalized.
+	// G304: Potential file inclusion via variable.
+	// This is a CLI tool and the user is expected to provide a path to the config file.
+	// #nosec G304
+	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
