@@ -5,6 +5,7 @@
 **The Fancy Apple Disk Image Creator**
 
 [![Go](https://github.com/alessio/mkdmg/actions/workflows/go.yml/badge.svg)](https://github.com/alessio/mkdmg/actions/workflows/go.yml)
+[![GoDoc](https://godoc.org/al.essio.dev/cmd/mkdmg?status.svg)](https://pkg.go.dev/al.essio.dev/cmd/mkdmg)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/gh/alessio/mkdmg)](https://www.codacy.com/gh/alessio/mkdmg/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=alessio/mkdmg&amp;utm_campaign=Badge_Grade)
 [![codecov](https://codecov.io/gh/alessio/mkdmg/branch/main/graph/badge.svg)](https://codecov.io/gh/alessio/mkdmg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alessio/mkdmg)](https://goreportcard.com/report/github.com/alessio/mkdmg)
