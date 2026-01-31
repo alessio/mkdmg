@@ -1,3 +1,4 @@
+// Package hdiutil_test contains tests for the hdiutil package.
 package hdiutil_test
 
 import (
