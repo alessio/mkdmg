@@ -1,6 +1,11 @@
 # mkdmg
 
-![Build](https://github.com/alessio/mkdmg/workflows/Go/badge.svg)
+[![Go](https://github.com/alessio/mkdmg/actions/workflows/go.yml/badge.svg)](https://github.com/alessio/mkdmg/actions/workflows/go.yml)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/gh/alessio/mkdmg)](https://www.codacy.com/gh/alessio/mkdmg/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=alessio/mkdmg&amp;utm_campaign=Badge_Grade)
+[![codecov](https://codecov.io/gh/alessio/mkdmg/branch/main/graph/badge.svg)](https://codecov.io/gh/alessio/mkdmg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alessio/mkdmg)](https://goreportcard.com/report/github.com/alessio/mkdmg)
+[![License](https://img.shields.io/github/license/alessio/mkdmg.svg)](https://github.com/alessio/mkdmg/blob/main/LICENSE)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/alessio/mkdmg)](https://github.com/alessio/mkdmg/releases)
 
 `mkdmg` is a command-line tool to build fancy Apple Disk Images (`.dmg`) on macOS. It acts as a powerful wrapper around `hdiutil` and other command-line tools to simplify the process of creating, signing, and notarizing DMGs.
 
