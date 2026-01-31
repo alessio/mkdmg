@@ -1,9 +1,9 @@
 # hdiutil
 
 [![GoDoc](https://pkg.go.dev/badge/al.essio.dev/cmd/mkdmg/pkg/hdiutil.svg)](https://pkg.go.dev/al.essio.dev/cmd/mkdmg/pkg/hdiutil)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/gh/alessio/mkdmg)](https://www.codacy.com/gh/alessio/mkdmg/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=alessio/mkdmg&amp;utm_campaign=Badge_Grade)
-[![codecov](https://codecov.io/gh/alessio/mkdmg/branch/main/graph/badge.svg)](https://codecov.io/gh/alessio/mkdmg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alessio/mkdmg)](https://goreportcard.com/report/github.com/alessio/mkdmg)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/gh/alessio/mkdmg/pkg/hdiutil)](https://www.codacy.com/gh/alessio/mkdmg/pkg/hdiutil/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=alessio/mkdmg&amp;utm_campaign=Badge_Grade)
+[![codecov](https://codecov.io/gh/alessio/mkdmg/pkg/hdiutil/branch/main/graph/badge.svg)](https://codecov.io/gh/alessio/mkdmg/pkg/hdiutil)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alessio/mkdmg/pkg/hdiutil)](https://goreportcard.com/report/github.com/alessio/mkdmg/pkg/hdiutil)
 [![License](https://img.shields.io/github/license/alessio/mkdmg.svg)](https://github.com/alessio/mkdmg/blob/main/LICENSE)
 
 Package `hdiutil` provides a robust Go wrapper around the macOS `hdiutil` command-line tool, simplifying the creation, manipulation, and signing of DMG disk images.
