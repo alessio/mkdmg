@@ -183,7 +183,7 @@ func usage() {
 }
 
 func printVersion() {
-	fmt.Println("mkdmg, version", version.Version)
+	fmt.Println("mkdmg, version", version.Version())
 	fmt.Println("Copyright (C) 2025 Alessio Treglia <alessio@debian.org>")
 }
 
