@@ -20,17 +20,24 @@ jobs:
       with:
         fetch-depth: 0
         fetch-tags: true
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: 'stable'
+    - run: go mod download
+    - run: go generate ./...
+    - run: go build
+    - run: ./mkdmg -V
+    - run: go mod verify
 
-    - name: Run go generate
-      run: go generate ./internal/...
-
-    - name: Build
-      run: go build -v ./...
-
-    - name: Test
-      run: go test -v -race ./...
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+      - run: go generate ./....
+      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
