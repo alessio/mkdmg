@@ -153,9 +153,9 @@ func (c *Config) Validate() error {
 func (c *Config) volumeNameToOpt() string {
 	if len(c.VolumeName) == 0 {
 		return strings.TrimSuffix(filepath.Base(c.OutputPath), ".dmg")
-	} else {
-		return c.VolumeName
 	}
+
+	return c.VolumeName
 }
 
 // validWrapper wraps a function to ensure Validate has been called before execution.
