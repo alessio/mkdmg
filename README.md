@@ -68,6 +68,8 @@ The basic syntax is intuitive:
 mkdmg [OPTIONS]... <output.dmg> <source_directory>
 ```
 
+> **Note:** All flags must be specified **before** the positional arguments.
+
 Or make it reproducible using a configuration file:
 
 ```sh

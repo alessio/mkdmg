@@ -187,7 +187,7 @@ func usage() {
 
 func printVersion() {
 	fmt.Println("mkdmg, version", version.Version())
-	fmt.Println("Copyright (C) 2025 Alessio Treglia <alessio@debian.org>")
+	fmt.Println("Copyright (C) 2025,2026 Alessio Treglia <alessio@debian.org>")
 }
 
 func isFlagPassed(name string) bool {
