@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"al.essio.dev/cmd/mkdmg/internal/version"
-	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
+	"al.essio.dev/pkg/tools/hdiutil"
 )
 
 var (
