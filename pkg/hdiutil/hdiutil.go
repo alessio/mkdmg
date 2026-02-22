@@ -1,9 +1,15 @@
 package hdiutil
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -36,6 +42,12 @@ var (
 	ErrSandboxAPFS = errors.New("creating an APFS disk image that is sandbox safe is not supported")
 	// ErrNeedInit indicates Runner.Setup was not called before attempting operations.
 	ErrNeedInit = errors.New("runner not properly initialized, call Setup() first")
+	// ErrChecksum indicates failure to generate the checksum file.
+	ErrChecksum = errors.New("failed to generate checksum")
+	// ErrInvChecksumAlgo indicates an unsupported checksum algorithm was specified.
+	ErrInvChecksumAlgo = errors.New("invalid checksum algorithm, supported: SHA256, SHA1, MD5")
+	// ErrExcludeCopy indicates failure to copy files while applying exclusion patterns.
+	ErrExcludeCopy = errors.New("failed to copy files with exclusions")
 )
 
 var (
@@ -272,6 +284,58 @@ func (r *Runner) Notarize() error {
 	return nil
 }
 
+// GenerateChecksum computes a hash of the final DMG and writes it to a file.
+// The output file is named after the DMG with a hash-specific extension (e.g., ".sha256").
+// If Config.Checksum is empty, this method returns nil without action.
+func (r *Runner) GenerateChecksum() error {
+	if r.Config.Checksum == "" {
+		return nil
+	}
+
+	if r.Simulate {
+		verboseLog.Println("Simulating checksum generation")
+		return nil
+	}
+
+	var h hash.Hash
+	var ext string
+	switch strings.ToUpper(r.Config.Checksum) {
+	case "SHA256":
+		h = sha256.New()
+		ext = ".sha256"
+	case "SHA1":
+		h = sha1.New()
+		ext = ".sha1"
+	case "MD5":
+		h = md5.New()
+		ext = ".md5"
+	default:
+		return fmt.Errorf("%w: %s", ErrInvChecksumAlgo, r.Config.Checksum)
+	}
+
+	f, err := os.Open(r.finalDmg)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrChecksum, err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(h, f); err != nil {
+		return fmt.Errorf("%w: %v", ErrChecksum, err)
+	}
+
+	sum := hex.EncodeToString(h.Sum(nil))
+	basename := filepath.Base(r.finalDmg)
+	line := fmt.Sprintf("%s  %s\n", sum, basename)
+
+	checksumPath := r.finalDmg + ext
+	if err := os.WriteFile(checksumPath, []byte(line), 0644); err != nil {
+		return fmt.Errorf("%w: %v", ErrChecksum, err)
+	}
+
+	verboseLog.Printf("Checksum written to %s\n", checksumPath)
+	return nil
+}
+
 // createTempImage creates a writable temporary disk image using hdiutil create.
 // The image is created with the configured filesystem, size, and volume name,
 // populated with files from the source directory.
@@ -363,7 +427,76 @@ func (r *Runner) init() error {
 	r.signOpt = r.SigningIdentity
 	r.notarizeOpt = r.NotarizeCredentials
 
+	// If exclude patterns are set, copy source to a staging directory
+	// skipping files that match any pattern.
+	if len(r.ExcludePatterns) > 0 {
+		stagingDir := filepath.Join(r.tmpDir, "staging")
+		if err := r.copyWithExclusions(r.srcDir, stagingDir); err != nil {
+			return fmt.Errorf("%w: %v", ErrExcludeCopy, err)
+		}
+		r.srcDir = stagingDir
+	}
+
 	return nil
+}
+
+// copyWithExclusions copies the source directory tree to dst, skipping files
+// whose base name matches any of the configured ExcludePatterns.
+func (r *Runner) copyWithExclusions(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		base := d.Name()
+		for _, pattern := range r.ExcludePatterns {
+			matched, matchErr := filepath.Match(pattern, base)
+			if matchErr != nil {
+				return fmt.Errorf("bad exclude pattern %q: %w", pattern, matchErr)
+			}
+			if matched {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+		}
+
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+
+		return copyFile(path, target)
+	})
+}
+
+// copyFile copies a single file from src to dst, preserving permissions.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 // fixPermissions removes group and other write permissions from the mounted volume.

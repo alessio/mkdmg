@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"al.essio.dev/cmd/mkdmg/internal/version"
 	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
@@ -24,6 +25,8 @@ var (
 	format              string
 	simulate            bool
 	hdiutilVerbosity    int
+	checksum            string
+	excludePatterns     string
 
 	helpMode    bool
 	versionMode bool
@@ -46,6 +49,8 @@ func init() {
 	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
 	flag.IntVar(&hdiutilVerbosity, "hdiutil-verbosity", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
+	flag.StringVar(&checksum, "checksum", "", "generate checksum file alongside DMG (SHA256|SHA1|MD5)")
+	flag.StringVar(&excludePatterns, "exclude", "", "comma-separated glob patterns to exclude from DMG")
 	flag.BoolVar(&simulate, "dry-run", false, "simulate the process")
 	flag.BoolVar(&simulate, "s", false, "simulate the process (shorthand)")
 	flag.BoolVar(&bless, "bless", false, "bless the disk image")
@@ -124,6 +129,12 @@ func main() {
 	if isFlagPassed("notarize") {
 		cfg.NotarizeCredentials = notarizeCredentials
 	}
+	if isFlagPassed("checksum") {
+		cfg.Checksum = checksum
+	}
+	if isFlagPassed("exclude") {
+		cfg.ExcludePatterns = strings.Split(excludePatterns, ",")
+	}
 	if isFlagPassed("dry-run") || isFlagPassed("s") {
 		cfg.Simulate = simulate
 	}
@@ -165,6 +176,7 @@ func main() {
 	checkErr(runner.Bless())
 	checkErr(runner.DetachDiskImage())
 	checkErr(runner.FinalizeDMG())
+	checkErr(runner.GenerateChecksum())
 
 	checkErr(runner.Codesign())
 	checkErr(runner.Notarize())

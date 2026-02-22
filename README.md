@@ -103,6 +103,8 @@ Here is a list of all available command-line flags:
 | `--apfs` | | Use APFS as the disk image's filesystem. | `false` (HFS+) |
 | `--sandbox-safe` | | Create a sandbox-safe DMG. | `false` |
 | `--format` | | Specify the final disk image format (`UDZO`, `UDBZ`, `ULFO`, `ULMO`). | `UDZO` |
+| `--checksum` | | Generate a checksum file alongside the DMG (`SHA256`, `SHA1`, `MD5`). | `""` |
+| `--exclude` | | Comma-separated glob patterns to exclude from the DMG. | `""` |
 | `--dry-run` | `-s` | Simulate the process without creating any files. | `false` |
 | `--hdiutil-verbosity` | | Set `hdiutil` verbosity (0=default, 1=quiet, 2=verbose, 3=debug). | `0` |
 | `--verbose` | `-v` | Enable verbose output for `mkdmg`. | `false` |
@@ -128,7 +130,9 @@ Here is a list of all available command-line flags:
   "hdiutil_verbosity": 0,
   "output_path": "./dist/MyApplication.dmg",
   "source_dir": "./build/Release",
-  "simulate": false
+  "simulate": false,
+  "checksum": "SHA256",
+  "exclude_patterns": [".DS_Store", "*.tmp"]
 }
 ```
 
@@ -148,6 +152,8 @@ Here is a list of all available command-line flags:
 | `output_path` | `string` | *(Required)* | Destination path for the `.dmg` file. |
 | `source_dir` | `string` | *(Required)* | Directory containing files to package. |
 | `simulate` | `boolean` | `false` | If `true`, prints commands without executing them. |
+| `checksum` | `string` | `""` | Hash algorithm for checksum file generation. Options: `"SHA256"`, `"SHA1"`, `"MD5"`. |
+| `exclude_patterns` | `string[]` | `[]` | Glob patterns for files to exclude from the DMG (matched against base names). |
 
 ---
 

@@ -25,6 +25,8 @@ func TestConfig_JSON(t *testing.T) {
 		OutputPath:          "test.dmg",
 		SourceDir:           "src",
 		Simulate:            true,
+		Checksum:            "SHA256",
+		ExcludePatterns:     []string{".DS_Store", "*.tmp"},
 	}
 
 	// Test ToJSON
@@ -75,6 +77,17 @@ func TestConfig_JSON(t *testing.T) {
 	}
 	if decoded.Simulate != original.Simulate {
 		t.Errorf("Simulate mismatch: expected %v, got %v", original.Simulate, decoded.Simulate)
+	}
+	if decoded.Checksum != original.Checksum {
+		t.Errorf("Checksum mismatch: expected %q, got %q", original.Checksum, decoded.Checksum)
+	}
+	if len(decoded.ExcludePatterns) != len(original.ExcludePatterns) {
+		t.Fatalf("ExcludePatterns length mismatch: expected %d, got %d", len(original.ExcludePatterns), len(decoded.ExcludePatterns))
+	}
+	for i, p := range original.ExcludePatterns {
+		if decoded.ExcludePatterns[i] != p {
+			t.Errorf("ExcludePatterns[%d] mismatch: expected %q, got %q", i, p, decoded.ExcludePatterns[i])
+		}
 	}
 }
 

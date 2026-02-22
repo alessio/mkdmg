@@ -81,6 +81,38 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: hdiutil.ErrSandboxAPFS,
 		},
 
+		// Checksum validation
+		{
+			name:    "valid_checksum_sha256",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "SHA256"},
+			wantErr: nil,
+		},
+		{
+			name:    "valid_checksum_sha1",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "SHA1"},
+			wantErr: nil,
+		},
+		{
+			name:    "valid_checksum_md5",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "MD5"},
+			wantErr: nil,
+		},
+		{
+			name:    "valid_checksum_lowercase",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "sha256"},
+			wantErr: nil,
+		},
+		{
+			name:    "invalid_checksum_algorithm",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "CRC32"},
+			wantErr: hdiutil.ErrInvChecksumAlgo,
+		},
+		{
+			name:    "empty_checksum_is_valid",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: ""},
+			wantErr: nil,
+		},
+
 		// Valid configurations
 		{
 			name:    "minimal_valid_config",

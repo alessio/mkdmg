@@ -732,6 +732,370 @@ func TestAttachDiskImage_MountPointWithWhitespace(t *testing.T) {
 	}
 }
 
+func TestGenerateChecksum_SHA256(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+	// Create a fake DMG file to checksum
+	if err := os.WriteFile(outputPath, []byte("fake dmg content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "SHA256",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.GenerateChecksum(); err != nil {
+		t.Fatalf("GenerateChecksum() error = %v", err)
+	}
+
+	checksumPath := outputPath + ".sha256"
+	data, err := os.ReadFile(checksumPath)
+	if err != nil {
+		t.Fatalf("Failed to read checksum file: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "test.dmg") {
+		t.Errorf("Checksum file should contain filename, got: %s", content)
+	}
+	// SHA256 hex digest is 64 characters
+	parts := strings.Fields(content)
+	if len(parts) < 2 || len(parts[0]) != 64 {
+		t.Errorf("Expected SHA256 hex digest (64 chars), got: %s", content)
+	}
+}
+
+func TestGenerateChecksum_SHA1(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+	if err := os.WriteFile(outputPath, []byte("fake dmg content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "SHA1",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.GenerateChecksum(); err != nil {
+		t.Fatalf("GenerateChecksum() error = %v", err)
+	}
+
+	checksumPath := outputPath + ".sha1"
+	data, err := os.ReadFile(checksumPath)
+	if err != nil {
+		t.Fatalf("Failed to read checksum file: %v", err)
+	}
+
+	parts := strings.Fields(string(data))
+	// SHA1 hex digest is 40 characters
+	if len(parts) < 2 || len(parts[0]) != 40 {
+		t.Errorf("Expected SHA1 hex digest (40 chars), got: %s", string(data))
+	}
+}
+
+func TestGenerateChecksum_MD5(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+	if err := os.WriteFile(outputPath, []byte("fake dmg content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "MD5",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.GenerateChecksum(); err != nil {
+		t.Fatalf("GenerateChecksum() error = %v", err)
+	}
+
+	checksumPath := outputPath + ".md5"
+	data, err := os.ReadFile(checksumPath)
+	if err != nil {
+		t.Fatalf("Failed to read checksum file: %v", err)
+	}
+
+	parts := strings.Fields(string(data))
+	// MD5 hex digest is 32 characters
+	if len(parts) < 2 || len(parts[0]) != 32 {
+		t.Errorf("Expected MD5 hex digest (32 chars), got: %s", string(data))
+	}
+}
+
+func TestGenerateChecksum_SkipsWhenEmpty(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: "test.dmg",
+		Checksum:   "",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.GenerateChecksum(); err != nil {
+		t.Errorf("GenerateChecksum() should skip when empty, got: %v", err)
+	}
+}
+
+func TestGenerateChecksum_SimulateMode(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "SHA256",
+		Simulate:   true,
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.GenerateChecksum(); err != nil {
+		t.Fatalf("GenerateChecksum() in simulate mode error = %v", err)
+	}
+
+	// No checksum file should be created in simulate mode
+	checksumPath := outputPath + ".sha256"
+	if _, err := os.Stat(checksumPath); err == nil {
+		t.Error("Checksum file should not be created in simulate mode")
+	}
+}
+
+func TestGenerateChecksum_InvalidAlgorithm(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/test.dmg"
+	if err := os.WriteFile(outputPath, []byte("fake"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "CRC32",
+	}
+
+	// Validation catches this before Setup completes
+	r := hdiutil.New(cfg, hdiutil.WithExecutor(mock))
+	t.Cleanup(r.Cleanup)
+	err := r.Setup()
+	if !errors.Is(err, hdiutil.ErrInvChecksumAlgo) {
+		t.Errorf("Setup() error = %v, want %v", err, hdiutil.ErrInvChecksumAlgo)
+	}
+}
+
+func TestGenerateChecksum_MissingDMGFile(t *testing.T) {
+	t.Parallel()
+	mock := &mockExecutor{}
+
+	outputDir := t.TempDir()
+	outputPath := outputDir + "/nonexistent.dmg"
+
+	cfg := &hdiutil.Config{
+		SourceDir:  t.TempDir(),
+		OutputPath: outputPath,
+		Checksum:   "SHA256",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	err := r.GenerateChecksum()
+	if !errors.Is(err, hdiutil.ErrChecksum) {
+		t.Errorf("GenerateChecksum() error = %v, want %v", err, hdiutil.ErrChecksum)
+	}
+}
+
+func TestExcludePatterns_FilesExcludedDuringSetup(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	// Create test files
+	if err := os.WriteFile(sourceDir+"/app.txt", []byte("app"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceDir+"/.DS_Store", []byte("ds"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceDir+"/notes.tmp", []byte("tmp"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sourceDir+"/subdir", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceDir+"/subdir/data.txt", []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceDir+"/subdir/.DS_Store", []byte("ds2"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mock := &mockExecutor{}
+	cfg := &hdiutil.Config{
+		SourceDir:       sourceDir,
+		OutputPath:      "test.dmg",
+		ExcludePatterns: []string{".DS_Store", "*.tmp"},
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	// Start calls createTempImage which uses the mock executor
+	if err := r.Start(); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	// The mock executor captured the hdiutil create command.
+	// The -srcfolder arg should point to the staging dir.
+	cmd, ok := mock.lastCommand()
+	if !ok {
+		t.Fatal("expected a command to be executed")
+	}
+
+	// Find -srcfolder arg in the command
+	srcFolder := ""
+	for i, arg := range cmd.Args {
+		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
+			srcFolder = cmd.Args[i+1]
+			break
+		}
+	}
+
+	if srcFolder == "" {
+		t.Fatal("expected -srcfolder in hdiutil create args")
+	}
+
+	// The staging dir should contain app.txt but NOT .DS_Store or notes.tmp
+	if _, err := os.Stat(srcFolder + "/app.txt"); err != nil {
+		t.Error("app.txt should exist in staging dir")
+	}
+	if _, err := os.Stat(srcFolder + "/.DS_Store"); err == nil {
+		t.Error(".DS_Store should be excluded from staging dir")
+	}
+	if _, err := os.Stat(srcFolder + "/notes.tmp"); err == nil {
+		t.Error("notes.tmp should be excluded from staging dir")
+	}
+	if _, err := os.Stat(srcFolder + "/subdir/data.txt"); err != nil {
+		t.Error("subdir/data.txt should exist in staging dir")
+	}
+	if _, err := os.Stat(srcFolder + "/subdir/.DS_Store"); err == nil {
+		t.Error("subdir/.DS_Store should be excluded from staging dir")
+	}
+}
+
+func TestExcludePatterns_NoExcludesUsesOriginalDir(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	if err := os.WriteFile(sourceDir+"/app.txt", []byte("app"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mock := &mockExecutor{}
+	cfg := &hdiutil.Config{
+		SourceDir:  sourceDir,
+		OutputPath: "test.dmg",
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.Start(); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	cmd, ok := mock.lastCommand()
+	if !ok {
+		t.Fatal("expected a command to be executed")
+	}
+
+	// Find -srcfolder arg
+	for i, arg := range cmd.Args {
+		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
+			if cmd.Args[i+1] != sourceDir {
+				t.Errorf("expected original source dir %q, got %q", sourceDir, cmd.Args[i+1])
+			}
+			return
+		}
+	}
+	t.Fatal("expected -srcfolder in hdiutil create args")
+}
+
+func TestExcludePatterns_ExcludesDirectory(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	if err := os.WriteFile(sourceDir+"/app.txt", []byte("app"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sourceDir+"/.git/objects", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceDir+"/.git/config", []byte("git config"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	mock := &mockExecutor{}
+	cfg := &hdiutil.Config{
+		SourceDir:       sourceDir,
+		OutputPath:      "test.dmg",
+		ExcludePatterns: []string{".git"},
+	}
+
+	r := newRunner(t, cfg, mock)
+
+	if err := r.Start(); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	cmd, ok := mock.lastCommand()
+	if !ok {
+		t.Fatal("expected a command to be executed")
+	}
+	srcFolder := ""
+	for i, arg := range cmd.Args {
+		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
+			srcFolder = cmd.Args[i+1]
+			break
+		}
+	}
+
+	if srcFolder == "" {
+		t.Fatal("expected -srcfolder in hdiutil create args")
+	}
+
+	if _, err := os.Stat(srcFolder + "/app.txt"); err != nil {
+		t.Error("app.txt should exist in staging dir")
+	}
+	if _, err := os.Stat(srcFolder + "/.git"); err == nil {
+		t.Error(".git directory should be excluded from staging dir")
+	}
+}
+
 func writeTestFile(t *testing.T, path, content string) error {
 	t.Helper()
 	return os.WriteFile(path, []byte(content), 0644)
