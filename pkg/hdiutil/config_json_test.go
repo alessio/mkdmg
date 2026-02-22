@@ -2,6 +2,7 @@ package hdiutil_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -130,4 +131,43 @@ func TestLoadConfig(t *testing.T) {
 	if cfg.VolumeName != "TestFile" {
 		t.Errorf("Expected VolumeName 'TestFile', got '%s'", cfg.VolumeName)
 	}
+}
+
+func TestLoadConfig_NonExistentFile(t *testing.T) {
+	t.Parallel()
+	_, err := hdiutil.LoadConfig("/nonexistent/path/config.json")
+	if err == nil {
+		t.Error("LoadConfig() should fail for non-existent file")
+	}
+}
+
+func TestLoadConfig_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	tmpFile := fmt.Sprintf("%s/invalid.json", t.TempDir())
+	if err := writeTestFile(t, tmpFile, "not valid json{{{"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := hdiutil.LoadConfig(tmpFile)
+	if err == nil {
+		t.Error("LoadConfig() should fail for invalid JSON")
+	}
+}
+
+func TestLoadConfig_EmptyFile(t *testing.T) {
+	t.Parallel()
+	tmpFile := fmt.Sprintf("%s/empty.json", t.TempDir())
+	if err := writeTestFile(t, tmpFile, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := hdiutil.LoadConfig(tmpFile)
+	if err == nil {
+		t.Error("LoadConfig() should fail for empty file")
+	}
+}
+
+func writeTestFile(t *testing.T, path, content string) error {
+	t.Helper()
+	return os.WriteFile(path, []byte(content), 0644)
 }

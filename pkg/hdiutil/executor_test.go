@@ -2,7 +2,6 @@ package hdiutil_test
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -42,12 +41,6 @@ func (m *mockExecutor) lastCommand() (executedCommand, bool) {
 	}
 	return m.commands[len(m.commands)-1], true
 }
-
-//func (m *mockExecutor) reset() {
-//	m.commands = nil
-//	m.runErr = nil
-//	m.runOutputFn = nil
-//}
 
 func newRunner(t *testing.T, cfg *hdiutil.Config, exec *mockExecutor) *hdiutil.Runner {
 	t.Helper()
@@ -637,40 +630,6 @@ func TestStart_SandboxSafeMakehybridFails(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_NonExistentFile(t *testing.T) {
-	t.Parallel()
-	_, err := hdiutil.LoadConfig("/nonexistent/path/config.json")
-	if err == nil {
-		t.Error("LoadConfig() should fail for non-existent file")
-	}
-}
-
-func TestLoadConfig_InvalidJSON(t *testing.T) {
-	t.Parallel()
-	tmpFile := fmt.Sprintf("%s/invalid.json", t.TempDir())
-	if err := writeTestFile(t, tmpFile, "not valid json{{{"); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := hdiutil.LoadConfig(tmpFile)
-	if err == nil {
-		t.Error("LoadConfig() should fail for invalid JSON")
-	}
-}
-
-func TestLoadConfig_EmptyFile(t *testing.T) {
-	t.Parallel()
-	tmpFile := fmt.Sprintf("%s/empty.json", t.TempDir())
-	if err := writeTestFile(t, tmpFile, ""); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := hdiutil.LoadConfig(tmpFile)
-	if err == nil {
-		t.Error("LoadConfig() should fail for empty file")
-	}
-}
-
 func TestDetachDiskImage_SimulateMode(t *testing.T) {
 	t.Parallel()
 	mock := &mockExecutor{}
@@ -897,6 +856,19 @@ func TestGenerateChecksum_MissingDMGFile(t *testing.T) {
 	}
 }
 
+// findArgValue returns the value of a flag in a command's args list.
+// For example, findArgValue(t, cmd, "-srcfolder") returns the argument after "-srcfolder".
+func findArgValue(t *testing.T, cmd executedCommand, flag string) string {
+	t.Helper()
+	for i, arg := range cmd.Args {
+		if arg == flag && i+1 < len(cmd.Args) {
+			return cmd.Args[i+1]
+		}
+	}
+	t.Fatalf("expected %s in %s args", flag, cmd.Name)
+	return ""
+}
+
 func TestExcludePatterns_FilesExcludedDuringSetup(t *testing.T) {
 	t.Parallel()
 
@@ -930,30 +902,16 @@ func TestExcludePatterns_FilesExcludedDuringSetup(t *testing.T) {
 
 	r := newRunner(t, cfg, mock)
 
-	// Start calls createTempImage which uses the mock executor
 	if err := r.Start(); err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
 
-	// The mock executor captured the hdiutil create command.
-	// The -srcfolder arg should point to the staging dir.
 	cmd, ok := mock.lastCommand()
 	if !ok {
 		t.Fatal("expected a command to be executed")
 	}
 
-	// Find -srcfolder arg in the command
-	srcFolder := ""
-	for i, arg := range cmd.Args {
-		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
-			srcFolder = cmd.Args[i+1]
-			break
-		}
-	}
-
-	if srcFolder == "" {
-		t.Fatal("expected -srcfolder in hdiutil create args")
-	}
+	srcFolder := findArgValue(t, cmd, "-srcfolder")
 
 	// The staging dir should contain app.txt but NOT .DS_Store or notes.tmp
 	if _, err := os.Stat(srcFolder + "/app.txt"); err != nil {
@@ -998,16 +956,10 @@ func TestExcludePatterns_NoExcludesUsesOriginalDir(t *testing.T) {
 		t.Fatal("expected a command to be executed")
 	}
 
-	// Find -srcfolder arg
-	for i, arg := range cmd.Args {
-		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
-			if cmd.Args[i+1] != sourceDir {
-				t.Errorf("expected original source dir %q, got %q", sourceDir, cmd.Args[i+1])
-			}
-			return
-		}
+	srcFolder := findArgValue(t, cmd, "-srcfolder")
+	if srcFolder != sourceDir {
+		t.Errorf("expected original source dir %q, got %q", sourceDir, srcFolder)
 	}
-	t.Fatal("expected -srcfolder in hdiutil create args")
 }
 
 func TestExcludePatterns_ExcludesDirectory(t *testing.T) {
@@ -1041,17 +993,8 @@ func TestExcludePatterns_ExcludesDirectory(t *testing.T) {
 	if !ok {
 		t.Fatal("expected a command to be executed")
 	}
-	srcFolder := ""
-	for i, arg := range cmd.Args {
-		if arg == "-srcfolder" && i+1 < len(cmd.Args) {
-			srcFolder = cmd.Args[i+1]
-			break
-		}
-	}
 
-	if srcFolder == "" {
-		t.Fatal("expected -srcfolder in hdiutil create args")
-	}
+	srcFolder := findArgValue(t, cmd, "-srcfolder")
 
 	if _, err := os.Stat(srcFolder + "/app.txt"); err != nil {
 		t.Error("app.txt should exist in staging dir")
@@ -1059,9 +1002,4 @@ func TestExcludePatterns_ExcludesDirectory(t *testing.T) {
 	if _, err := os.Stat(srcFolder + "/.git"); err == nil {
 		t.Error(".git directory should be excluded from staging dir")
 	}
-}
-
-func writeTestFile(t *testing.T, path, content string) error {
-	t.Helper()
-	return os.WriteFile(path, []byte(content), 0644)
 }
