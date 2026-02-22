@@ -1,9 +1,8 @@
 package hdiutil
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -45,7 +44,7 @@ var (
 	// ErrChecksum indicates failure to generate the checksum file.
 	ErrChecksum = errors.New("failed to generate checksum")
 	// ErrInvChecksumAlgo indicates an unsupported checksum algorithm was specified.
-	ErrInvChecksumAlgo = errors.New("invalid checksum algorithm, supported: SHA256, SHA1, MD5")
+	ErrInvChecksumAlgo = errors.New("invalid checksum algorithm, supported: SHA256, SHA512")
 	// ErrExcludeCopy indicates failure to copy files while applying exclusion patterns.
 	ErrExcludeCopy = errors.New("failed to copy files with exclusions")
 )
@@ -288,7 +287,7 @@ func (r *Runner) Notarize() error {
 // The output file is named after the DMG with a hash-specific extension (e.g., ".sha256").
 // If Config.Checksum is empty, this method returns nil without action.
 func (r *Runner) GenerateChecksum() error {
-	if r.Config.Checksum == "" {
+	if r.Checksum == "" {
 		return nil
 	}
 
@@ -299,25 +298,22 @@ func (r *Runner) GenerateChecksum() error {
 
 	var h hash.Hash
 	var ext string
-	switch strings.ToUpper(r.Config.Checksum) {
+	switch strings.ToUpper(r.Checksum) {
 	case "SHA256":
 		h = sha256.New()
 		ext = ".sha256"
-	case "SHA1":
-		h = sha1.New()
-		ext = ".sha1"
-	case "MD5":
-		h = md5.New()
-		ext = ".md5"
+	case "SHA512":
+		h = sha512.New()
+		ext = ".sha512"
 	default:
-		return fmt.Errorf("%w: %s", ErrInvChecksumAlgo, r.Config.Checksum)
+		return fmt.Errorf("%w: %s", ErrInvChecksumAlgo, r.Checksum)
 	}
 
 	f, err := os.Open(r.finalDmg)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrChecksum, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := io.Copy(h, f); err != nil {
 		return fmt.Errorf("%w: %v", ErrChecksum, err)
@@ -482,7 +478,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	info, err := in.Stat()
 	if err != nil {
@@ -493,7 +489,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	_, err = io.Copy(out, in)
 	return err

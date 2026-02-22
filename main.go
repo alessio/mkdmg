@@ -49,7 +49,7 @@ func init() {
 	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
 	flag.IntVar(&hdiutilVerbosity, "hdiutil-verbosity", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
-	flag.StringVar(&checksum, "checksum", "", "generate checksum file alongside DMG (SHA256|SHA1|MD5)")
+	flag.StringVar(&checksum, "checksum", "", "generate checksum file alongside DMG (SHA256|SHA512)")
 	flag.StringVar(&excludePatterns, "exclude", "", "comma-separated glob patterns to exclude from DMG")
 	flag.BoolVar(&simulate, "dry-run", false, "simulate the process")
 	flag.BoolVar(&simulate, "s", false, "simulate the process (shorthand)")

@@ -148,7 +148,7 @@ func (c *Config) Validate() error {
 
 	if c.Checksum != "" {
 		switch strings.ToUpper(c.Checksum) {
-		case "SHA256", "SHA1", "MD5":
+		case "SHA256", "SHA512":
 			// valid
 		default:
 			return ErrInvChecksumAlgo

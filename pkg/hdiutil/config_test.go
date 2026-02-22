@@ -88,18 +88,18 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:    "valid_checksum_sha1",
-			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "SHA1"},
-			wantErr: nil,
-		},
-		{
-			name:    "valid_checksum_md5",
-			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "MD5"},
+			name:    "valid_checksum_sha512",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "SHA512"},
 			wantErr: nil,
 		},
 		{
 			name:    "valid_checksum_lowercase",
 			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "sha256"},
+			wantErr: nil,
+		},
+		{
+			name:    "valid_checksum_sha512_lowercase",
+			config:  hdiutil.Config{SourceDir: "src", OutputPath: "test.dmg", Checksum: "sha512"},
 			wantErr: nil,
 		},
 		{

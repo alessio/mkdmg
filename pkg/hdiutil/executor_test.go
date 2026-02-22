@@ -772,7 +772,7 @@ func TestGenerateChecksum_SHA256(t *testing.T) {
 	}
 }
 
-func TestGenerateChecksum_SHA1(t *testing.T) {
+func TestGenerateChecksum_SHA512(t *testing.T) {
 	t.Parallel()
 	mock := &mockExecutor{}
 
@@ -785,7 +785,7 @@ func TestGenerateChecksum_SHA1(t *testing.T) {
 	cfg := &hdiutil.Config{
 		SourceDir:  t.TempDir(),
 		OutputPath: outputPath,
-		Checksum:   "SHA1",
+		Checksum:   "SHA512",
 	}
 
 	r := newRunner(t, cfg, mock)
@@ -794,51 +794,16 @@ func TestGenerateChecksum_SHA1(t *testing.T) {
 		t.Fatalf("GenerateChecksum() error = %v", err)
 	}
 
-	checksumPath := outputPath + ".sha1"
+	checksumPath := outputPath + ".sha512"
 	data, err := os.ReadFile(checksumPath)
 	if err != nil {
 		t.Fatalf("Failed to read checksum file: %v", err)
 	}
 
 	parts := strings.Fields(string(data))
-	// SHA1 hex digest is 40 characters
-	if len(parts) < 2 || len(parts[0]) != 40 {
-		t.Errorf("Expected SHA1 hex digest (40 chars), got: %s", string(data))
-	}
-}
-
-func TestGenerateChecksum_MD5(t *testing.T) {
-	t.Parallel()
-	mock := &mockExecutor{}
-
-	outputDir := t.TempDir()
-	outputPath := outputDir + "/test.dmg"
-	if err := os.WriteFile(outputPath, []byte("fake dmg content"), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	cfg := &hdiutil.Config{
-		SourceDir:  t.TempDir(),
-		OutputPath: outputPath,
-		Checksum:   "MD5",
-	}
-
-	r := newRunner(t, cfg, mock)
-
-	if err := r.GenerateChecksum(); err != nil {
-		t.Fatalf("GenerateChecksum() error = %v", err)
-	}
-
-	checksumPath := outputPath + ".md5"
-	data, err := os.ReadFile(checksumPath)
-	if err != nil {
-		t.Fatalf("Failed to read checksum file: %v", err)
-	}
-
-	parts := strings.Fields(string(data))
-	// MD5 hex digest is 32 characters
-	if len(parts) < 2 || len(parts[0]) != 32 {
-		t.Errorf("Expected MD5 hex digest (32 chars), got: %s", string(data))
+	// SHA512 hex digest is 128 characters
+	if len(parts) < 2 || len(parts[0]) != 128 {
+		t.Errorf("Expected SHA512 hex digest (128 chars), got: %s", string(data))
 	}
 }
 
