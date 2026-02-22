@@ -187,7 +187,9 @@ func (r *Runner) DetachDiskImage() error {
 		verboseLog.Println("Simulating detach of disk image")
 		return nil
 	}
-	r.fixPermissions()
+	if err := r.fixPermissions(); err != nil {
+		return err
+	}
 	return r.runHdiutil("detach", r.mountDir)
 }
 
@@ -195,7 +197,9 @@ func (r *Runner) DetachDiskImage() error {
 // This operation is skipped if Config.Bless is false or if SandboxSafe mode is enabled.
 // Bless is typically used for bootable installer images.
 func (r *Runner) Bless() error {
-	r.fixPermissions()
+	if err := r.fixPermissions(); err != nil {
+		return err
+	}
 	if !r.Config.Bless {
 		return nil
 	}
@@ -364,20 +368,20 @@ func (r *Runner) init() error {
 
 // fixPermissions removes group and other write permissions from the mounted volume.
 // This is called automatically before detaching the image and is idempotent.
-// TODO: handle errors instead of ignoring them quitely.
-func (r *Runner) fixPermissions() {
+func (r *Runner) fixPermissions() error {
 	if r.permFixed {
-		return
+		return nil
 	}
 
 	verboseLog.Println("Fixing permissions")
 	if err := r.runCommand("chmod", []string{
 		"-Rf", "go-w", r.mountDir,
 	}...); err != nil {
-		verboseLog.Printf("chmod failed: %v", err)
+		return fmt.Errorf("chmod failed: %w", err)
 	}
 
 	r.permFixed = true
+	return nil
 }
 
 // runHdiutil executes hdiutil with the given arguments.
