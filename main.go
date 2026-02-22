@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -9,8 +10,6 @@ import (
 
 	"al.essio.dev/cmd/mkdmg/internal/version"
 	"al.essio.dev/cmd/mkdmg/pkg/hdiutil"
-
-	flag "github.com/spf13/pflag"
 )
 
 var (
@@ -46,15 +45,18 @@ func init() {
 	flag.BoolVar(&apfsFs, "apfs", false, "use APFS as disk image's filesystem (default: HFS+)")
 	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
 	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
-	flag.IntVarP(&hdiutilVerbosity, "hdiutil-verbosity", "", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)") // Changed from 'V' to 'x'
-	flag.BoolVarP(&simulate, "dry-run", "s", false, "simulate the process")
+	flag.IntVar(&hdiutilVerbosity, "hdiutil-verbosity", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
+	flag.BoolVar(&simulate, "dry-run", false, "simulate the process")
+	flag.BoolVar(&simulate, "s", false, "simulate the process (shorthand)")
 	flag.BoolVar(&bless, "bless", false, "bless the disk image")
 	flag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
-	flag.BoolVarP(&helpMode, "help", "h", false, "display this help and exit.")
-	flag.BoolVarP(&versionMode, "version", "V", false, "output version information and exit.")
-	flag.BoolVarP(&verboseMode, "verbose", "v", false, "enable verbose output")
+	flag.BoolVar(&helpMode, "help", false, "display this help and exit.")
+	flag.BoolVar(&helpMode, "h", false, "display this help and exit (shorthand)")
+	flag.BoolVar(&versionMode, "version", false, "output version information and exit.")
+	flag.BoolVar(&versionMode, "V", false, "output version information and exit (shorthand)")
+	flag.BoolVar(&verboseMode, "verbose", false, "enable verbose output")
+	flag.BoolVar(&verboseMode, "v", false, "enable verbose output (shorthand)")
 	flag.Usage = usage
-	flag.ErrHelp = nil
 
 	verboseLog = log.New(io.Discard, "mkdmg: ", 0)
 
@@ -122,7 +124,7 @@ func main() {
 	if isFlagPassed("notarize") {
 		cfg.NotarizeCredentials = notarizeCredentials
 	}
-	if isFlagPassed("dry-run") {
+	if isFlagPassed("dry-run") || isFlagPassed("s") {
 		cfg.Simulate = simulate
 	}
 	if isFlagPassed("bless") {
@@ -177,9 +179,10 @@ func checkErr(err error) {
 }
 
 func usage() {
-	fmt.Printf("Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
-	fmt.Printf("       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
-	fmt.Print(flag.CommandLine.FlagUsages())
+	w := flag.CommandLine.Output()
+	fmt.Fprintf(w, "Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
+	fmt.Fprintf(w, "       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
+	flag.PrintDefaults()
 }
 
 func printVersion() {
