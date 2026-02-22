@@ -43,11 +43,11 @@ func (m *mockExecutor) lastCommand() (executedCommand, bool) {
 	return m.commands[len(m.commands)-1], true
 }
 
-func (m *mockExecutor) reset() {
-	m.commands = nil
-	m.runErr = nil
-	m.runOutputFn = nil
-}
+//func (m *mockExecutor) reset() {
+//	m.commands = nil
+//	m.runErr = nil
+//	m.runOutputFn = nil
+//}
 
 func newRunner(t *testing.T, cfg *hdiutil.Config, exec *mockExecutor) *hdiutil.Runner {
 	t.Helper()
