@@ -44,7 +44,7 @@ func TestMkdmgBasicCreation(t *testing.T) {
 	t.Logf("Mkdmg binary built successfully at: %s", mkdmgBinary)
 
 	// Run the mkdmg binary
-	cmdMkdmg := exec.Command(mkdmgBinary, outputDMG, sourceDir, "--volname", "TestVolume", "--disk-image-size", "10")
+	cmdMkdmg := exec.Command(mkdmgBinary, "--volname", "TestVolume", "--disk-image-size", "10", outputDMG, sourceDir)
 	var mkdmgErr bytes.Buffer
 	cmdMkdmg.Stderr = &mkdmgErr
 	if testing.Verbose() {

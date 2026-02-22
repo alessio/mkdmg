@@ -180,8 +180,8 @@ func checkErr(err error) {
 
 func usage() {
 	w := flag.CommandLine.Output()
-	fmt.Fprintf(w, "Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
-	fmt.Fprintf(w, "       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
+	_, _ = fmt.Fprintf(w, "Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
+	_, _ = fmt.Fprintf(w, "       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
 	flag.PrintDefaults()
 }
 
