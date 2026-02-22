@@ -1,2 +1,2 @@
-al.essio.dev/pkg/tools v1.4.3-0.20260222090053-1932f031430f h1:XLrBR5+5i9Ptyoesb67qaIc37AB3eWm9xxL0pfzWrNo=
-al.essio.dev/pkg/tools v1.4.3-0.20260222090053-1932f031430f/go.mod h1:VE5zfJEFe50wLrFwn3OIwBOx0kkcwjuEv0m/U6StPWU=
+al.essio.dev/pkg/hdiutil v0.0.0-20260222135533-5d2be49bd488 h1:stSrwA+KbyP7jSSseu5FACUZb3UeBXFAYUUOI8kMZow=
+al.essio.dev/pkg/hdiutil v0.0.0-20260222135533-5d2be49bd488/go.mod h1:p7HBuu5IhFqjMCxrFnZ7/GBCWTMRTRmuLJEk7kIlhJo=
