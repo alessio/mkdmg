@@ -464,6 +464,12 @@ func (r *Runner) copyWithExclusions(src, dst string) error {
 		}
 		target := filepath.Join(dst, rel)
 
+		// Prevent path traversal: ensure target stays within dst.
+		if !strings.HasPrefix(filepath.Clean(target)+string(os.PathSeparator), filepath.Clean(dst)+string(os.PathSeparator)) &&
+			filepath.Clean(target) != filepath.Clean(dst) {
+			return fmt.Errorf("path traversal detected: %q escapes destination %q", rel, dst)
+		}
+
 		if d.IsDir() {
 			return os.MkdirAll(target, 0755)
 		}
@@ -489,10 +495,13 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = out.Close() }()
 
-	_, err = io.Copy(out, in)
-	return err
+	_, copyErr := io.Copy(out, in)
+	closeErr := out.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	return closeErr
 }
 
 // fixPermissions removes group and other write permissions from the mounted volume.
