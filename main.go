@@ -67,16 +67,22 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix(fmt.Sprintf("%s: ", binBasename))
 	log.SetOutput(os.Stderr)
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	flag.Parse()
 
 	if helpMode {
 		usage()
-		return
+		return nil
 	}
 
 	if versionMode {
 		printVersion()
-		return
+		return nil
 	}
 
 	var cfg *hdiutil.Config
@@ -84,16 +90,16 @@ func main() {
 
 	if configPath != "" {
 		if flag.NArg() != 0 && flag.NArg() != 2 {
-			log.Fatalln("invalid arguments: provide either a config file alone, or a config file plus exactly two positional arguments (output path and source dir) to override")
+			return fmt.Errorf("invalid arguments: provide either a config file alone, or a config file plus exactly two positional arguments (output path and source dir) to override")
 		}
 
-		cfg, err = hdiutil.LoadConfig(configPath)
+		cfg, err = loadConfig(configPath)
 		if err != nil {
-			log.Fatalf("failed to load config: %v", err)
+			return fmt.Errorf("failed to load config: %v", err)
 		}
 	} else {
 		if flag.NArg() != 2 {
-			log.Fatalln("invalid arguments")
+			return fmt.Errorf("invalid arguments")
 		}
 
 		cfg = &hdiutil.Config{
@@ -145,7 +151,7 @@ func main() {
 	}
 
 	if cfg.OutputPath == "" || cfg.SourceDir == "" {
-		log.Fatalln("missing output path or source directory")
+		return fmt.Errorf("missing output path or source directory")
 	}
 
 	if verboseMode {
@@ -155,27 +161,34 @@ func main() {
 
 	runner := hdiutil.New(cfg)
 	if err := runner.Setup(); err != nil {
-		log.Fatalf("Failed to setup: %v", err)
+		return fmt.Errorf("failed to setup: %v", err)
 	}
 	defer runner.Cleanup()
 
-	checkErr(runner.Start())
-
-	checkErr(runner.AttachDiskImage())
-	checkErr(runner.Bless())
-	checkErr(runner.DetachDiskImage())
-	checkErr(runner.FinalizeDMG())
-
-	checkErr(runner.Codesign())
-	checkErr(runner.Notarize())
+	if err := runner.Start(); err != nil {
+		return err
+	}
+	if err := runner.AttachDiskImage(); err != nil {
+		return err
+	}
+	if err := runner.Bless(); err != nil {
+		return err
+	}
+	if err := runner.DetachDiskImage(); err != nil {
+		return err
+	}
+	if err := runner.FinalizeDMG(); err != nil {
+		return err
+	}
+	if err := runner.Codesign(); err != nil {
+		return err
+	}
+	if err := runner.Notarize(); err != nil {
+		return err
+	}
 
 	verboseLog.Printf("DMG created successfully: %s\n", runner.OutputPath)
-}
-
-func checkErr(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
+	return nil
 }
 
 func usage() {
@@ -198,4 +211,26 @@ func isFlagPassed(name string) bool {
 		}
 	})
 	return found
+}
+
+// LoadConfig reads the configuration from a JSON file.
+func loadConfig(path string) (*hdiutil.Config, error) {
+	// Clean the path to ensure it is normalized.
+	// G304: Potential file inclusion via variable.
+	// This is a CLI tool and the user is expected to provide a path to the config file.
+	// #nosec G304
+	f, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	cfg := &hdiutil.Config{}
+	if err := cfg.FromJSON(f); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

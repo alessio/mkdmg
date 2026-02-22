@@ -39,6 +39,7 @@ mod-tidy:
 clean:
 	rm -f $(BIN)
 	rm -f coverage.out
+	echo "v0.0.0-UNKNOWN" > $(CURDIR)/internal/version/version.txt
 
 .PHONY: distclean
 distclean: clean
