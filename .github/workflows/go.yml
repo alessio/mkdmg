@@ -23,11 +23,9 @@ jobs:
     - uses: actions/setup-go@v6
       with:
         go-version: 'stable'
-    - run: go mod download
     - run: go generate ./...
     - run: go build
     - run: ./mkdmg -V
-    - run: go mod verify
 
   test:
     runs-on: macos-latest

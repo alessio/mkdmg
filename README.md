@@ -35,18 +35,24 @@
 
 ### Pre-built Binaries
 
-You can download the latest pre-built binaries for macOS (Darwin) and Linux from the [GitHub Releases page](https://github.com/alessio/mkdmg/releases).
+You can download the latest pre-built binaries for macOS (Darwin) from the [GitHub Releases page](https://github.com/alessio/mkdmg/releases).
 
 1.  Visit the [releases page](https://github.com/alessio/mkdmg/releases).
-2.  Download the archive matching your operating system and architecture.
+2.  Download the archive matching your architecture (`x86_64` or `arm64`).
 3.  Extract the archive and move the `mkdmg` binary to a directory in your `PATH` (e.g., `/usr/local/bin`).
 
 ### From Source
 
-You can install `mkdmg` directly using `go install`:
+Requires Go 1.26 or later.
 
 ```sh
 go install al.essio.dev/cmd/mkdmg@latest
+```
+
+To build from a local checkout:
+
+```sh
+make build
 ```
 
 ### Verification
@@ -65,7 +71,7 @@ sha256sum -c checksums.txt --ignore-missing
 The basic syntax is intuitive:
 
 ```sh
-mkdmg [OPTIONS]... <output.dmg> <source_directory>
+mkdmg [OPTION]... OUTFILE.DMG DIRECTORY
 ```
 
 > **Note:** All flags must be specified **before** the positional arguments.
@@ -74,6 +80,12 @@ Or make it reproducible using a configuration file:
 
 ```sh
 mkdmg --config config.json
+```
+
+You can also combine a configuration file with positional arguments to override the output path and source directory:
+
+```sh
+mkdmg --config config.json OUTFILE.DMG DIRECTORY
 ```
 
 ### Example
