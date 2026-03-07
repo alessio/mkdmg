@@ -23,7 +23,7 @@
 ## ✨ Features
 
 - 🚀 **Simple:** Create DMGs with a single command.
-- ⚙️ **Configurable:** JSON configuration support for reproducible builds.
+- ⚙️ **Configurable:** JSON configuration for reproducible builds.
 - 📦 **Formats:** Supports multiple DMG formats (`UDZO`, `UDBZ`, `ULFO`, `ULMO`).
 - 🔐 **Security:** Integrated codesigning and notarization workflow.
 - 🖥️ **Filesystems:** Support for both HFS+ and APFS.
@@ -66,64 +66,44 @@ sha256sum -c checksums.txt --ignore-missing
 
 ## 🚀 Usage
 
-The basic syntax is intuitive:
-
 ```sh
-mkdmg [OPTION]... OUTFILE.DMG DIRECTORY
+mkdmg [OPTION]... [OUTFILE.DMG [DIRECTORY]]
 ```
 
-> **Note:** All flags must be specified **before** the positional arguments.
-
-Or make it reproducible using a configuration file:
+`mkdmg` reads its configuration from a JSON file (default: `mkdmg.json` in the current directory). You can optionally provide positional arguments to override the output path and source directory from the config.
 
 ```sh
-mkdmg --config config.json
-```
+# Use default config (mkdmg.json)
+mkdmg
 
-You can also combine a configuration file with positional arguments to override the output path and source directory:
+# Use a specific config file
+mkdmg --config path/to/config.json
 
-```sh
-mkdmg --config config.json OUTFILE.DMG DIRECTORY
-```
+# Override output path and source directory
+mkdmg MyApp.dmg ./build
 
-### Example
+# Override output path only (source_dir must be in config)
+mkdmg MyApp.dmg
 
-Create a 100MB DMG named "My App.dmg" with the volume name "My App v1.0" from the contents of the `./build` directory:
-
-```sh
-mkdmg \
-  --volname "My App v1.0" \
-  --disk-image-size 100 \
-  "My App.dmg" \
-  ./build
+# Dry run to preview commands
+mkdmg --dry-run --verbose
 ```
 
 ## ⚙️ Options
 
-Here is a list of all available command-line flags:
-
 | Flag | Shorthand | Description | Default |
 | :--- | :---: | :--- | :--- |
-| `--config` | | Path to a JSON configuration file. | `""` |
-| `--volname` | | Set the volume name for the DMG. | `<filename>` |
-| `--disk-image-size` | | Set the size for the DMG in megabytes (MB). | `0` |
-| `--codesign` | | Provide a signing identity to codesign the final DMG. | `""` |
-| `--notarize` | | Provide keychain-stored credentials to notarize the DMG. | `""` |
-| `--bless` | | Bless the disk image. | `false` |
-| `--apfs` | | Use APFS as the disk image's filesystem. | `false` (HFS+) |
-| `--sandbox-safe` | | Create a sandbox-safe DMG. | `false` |
-| `--format` | | Specify the final disk image format (`UDZO`, `UDBZ`, `ULFO`, `ULMO`). | `UDZO` |
+| `--config` | | Path to a JSON configuration file. | `mkdmg.json` |
 | `--dry-run` | `-s` | Simulate the process without creating any files. | `false` |
-| `--hdiutil-verbosity` | | Set `hdiutil` verbosity (0=default, 1=quiet, 2=verbose, 3=debug). | `0` |
 | `--verbose` | `-v` | Enable verbose output for `mkdmg`. | `false` |
-| `--version` | `-V` | Print version information and exit. | `false` |
-| `--help` | `-h` | Display the help message and exit. | `false` |
+| `--version` | `-V` | Print version information and exit. | |
+| `--help` | `-h` | Display the help message and exit. | |
 
 ## 📄 JSON Configuration
 
-`mkdmg` can also be fully configured using a JSON file.
+All build settings are defined in the JSON configuration file.
 
-### Example `config.json`
+### Example `mkdmg.json`
 
 ```json
 {

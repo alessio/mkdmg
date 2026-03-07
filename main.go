@@ -13,17 +13,8 @@ import (
 )
 
 var (
-	configPath          string
-	volumeName          string
-	size                int64
-	bless               bool
-	signingIdentity     string
-	notarizeCredentials string
-	apfsFs              bool
-	sandboxSafe         bool
-	format              string
-	simulate            bool
-	hdiutilVerbosity    int
+	configPath string
+	simulate   bool
 
 	helpMode    bool
 	versionMode bool
@@ -38,18 +29,9 @@ func init() {
 
 	flag.CommandLine.SetOutput(os.Stderr)
 
-	flag.StringVar(&configPath, "config", "", "path to a JSON configuration file")
-	flag.StringVar(&volumeName, "volname", "", "volume name for the DMG")
-	flag.Int64Var(&size, "disk-image-size", 0, "size for the DMG in MB")
-	flag.StringVar(&signingIdentity, "codesign", "", "signing identity")
-	flag.BoolVar(&apfsFs, "apfs", false, "use APFS as disk image's filesystem (default: HFS+)")
-	flag.BoolVar(&sandboxSafe, "sandbox-safe", false, "use sandbox-safe")
-	flag.StringVar(&format, "format", "", "specify the final disk image format (UDZO|UDBZ|ULFO|ULMO)")
-	flag.IntVar(&hdiutilVerbosity, "hdiutil-verbosity", 0, "set hdiutil verbosity level (0=default - 1=quiet - 2=verbose - 3=debug)")
+	flag.StringVar(&configPath, "config", "mkdmg.json", "path to a JSON configuration file")
 	flag.BoolVar(&simulate, "dry-run", false, "simulate the process")
 	flag.BoolVar(&simulate, "s", false, "simulate the process (shorthand)")
-	flag.BoolVar(&bless, "bless", false, "bless the disk image")
-	flag.StringVar(&notarizeCredentials, "notarize", "", "notarize the disk image (waits and staples) with the keychain stored credentials")
 	flag.BoolVar(&helpMode, "help", false, "display this help and exit.")
 	flag.BoolVar(&helpMode, "h", false, "display this help and exit (shorthand)")
 	flag.BoolVar(&versionMode, "version", false, "output version information and exit.")
@@ -85,69 +67,25 @@ func run() error {
 		return nil
 	}
 
-	var cfg *hdiutil.Config
-	var err error
-
-	if configPath != "" {
-		if flag.NArg() != 0 && flag.NArg() != 2 {
-			return fmt.Errorf("invalid arguments: provide either a config file alone, or a config file plus exactly two positional arguments (output path and source dir) to override")
-		}
-
-		cfg, err = loadConfig(configPath)
-		if err != nil {
-			return fmt.Errorf("failed to load config: %v", err)
-		}
-	} else {
-		if flag.NArg() != 2 {
-			return fmt.Errorf("invalid arguments")
-		}
-
-		cfg = &hdiutil.Config{
-			OutputPath: flag.Arg(0),
-			SourceDir:  flag.Arg(1),
-		}
+	if flag.NArg() > 2 {
+		return fmt.Errorf("too many positional arguments")
 	}
 
-	// Override with CLI flags if set
-	if isFlagPassed("volname") {
-		cfg.VolumeName = volumeName
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %v", err)
 	}
-	if isFlagPassed("disk-image-size") {
-		cfg.VolumeSizeMb = size
-	}
-	if isFlagPassed("sandbox-safe") {
-		cfg.SandboxSafe = sandboxSafe
-	}
-	if isFlagPassed("format") {
-		cfg.ImageFormat = format
-	}
-	if isFlagPassed("hdiutil-verbosity") {
-		cfg.HDIUtilVerbosity = hdiutilVerbosity
-	}
-	if isFlagPassed("codesign") {
-		cfg.SigningIdentity = signingIdentity
-	}
-	if isFlagPassed("notarize") {
-		cfg.NotarizeCredentials = notarizeCredentials
-	}
+
 	if isFlagPassed("dry-run") || isFlagPassed("s") {
 		cfg.Simulate = simulate
 	}
-	if isFlagPassed("bless") {
-		cfg.Bless = bless
-	}
-	if isFlagPassed("apfs") {
-		if apfsFs {
-			cfg.FileSystem = "APFS"
-		} else {
-			cfg.FileSystem = "HFS+"
-		}
-	}
 
-	// Positional arguments override config if provided
-	if flag.NArg() == 2 {
+	switch flag.NArg() {
+	case 2:
 		cfg.OutputPath = flag.Arg(0)
 		cfg.SourceDir = flag.Arg(1)
+	case 1:
+		cfg.OutputPath = flag.Arg(0)
 	}
 
 	if cfg.OutputPath == "" || cfg.SourceDir == "" {
@@ -193,8 +131,7 @@ func run() error {
 
 func usage() {
 	w := flag.CommandLine.Output()
-	_, _ = fmt.Fprintf(w, "Usage: %s [OPTION]... OUTFILE.DMG DIRECTORY\n", binBasename)
-	_, _ = fmt.Fprintf(w, "       %s --config CONFIG_FILE [OUTFILE.DMG DIRECTORY]\n", binBasename)
+	_, _ = fmt.Fprintf(w, "Usage: %s [OPTION]... [OUTFILE.DMG [DIRECTORY]]\n", binBasename)
 	flag.PrintDefaults()
 }
 
@@ -213,7 +150,7 @@ func isFlagPassed(name string) bool {
 	return found
 }
 
-// LoadConfig reads the configuration from a JSON file.
+// loadConfig reads the configuration from a JSON file.
 func loadConfig(path string) (*hdiutil.Config, error) {
 	// Clean the path to ensure it is normalized.
 	// G304: Potential file inclusion via variable.
