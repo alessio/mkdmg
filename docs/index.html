@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mkdmg - The Fancy Apple Disk Image Creator</title>
+  <meta name="description" content="A powerful, modern CLI tool for creating, signing, and notarizing macOS Disk Images (.dmg) effortlessly.">
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #ffffff;
+      --text: #1a1a2e;
+      --muted: #64648c;
+      --accent: #6c5ce7;
+      --accent-light: #a29bfe;
+      --border: #e8e8f0;
+      --code-bg: #f0eef8;
+      --tag-bg: #ede9fe;
+      --tag-text: #5b4cad;
+      --gradient-start: #6c5ce7;
+      --gradient-end: #a29bfe;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f0e17;
+        --card: #1a1930;
+        --text: #e8e8f0;
+        --muted: #a0a0c0;
+        --accent: #a29bfe;
+        --accent-light: #6c5ce7;
+        --border: #2a2945;
+        --code-bg: #1e1d33;
+        --tag-bg: #2a2550;
+        --tag-text: #c4bfff;
+        --gradient-start: #a29bfe;
+        --gradient-end: #6c5ce7;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 0 60px;
+    }
+
+    .hero-icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+      display: block;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero .tagline {
+      font-size: 20px;
+      color: var(--muted);
+      margin-top: 8px;
+      font-weight: 400;
+    }
+
+    .hero .description {
+      font-size: 16px;
+      color: var(--muted);
+      margin-top: 16px;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Buttons */
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(108, 92, 231, 0.25);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* Install box */
+    .install-box {
+      margin-top: 32px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .install-cmd {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 24px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 14px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+      position: relative;
+    }
+
+    .install-cmd:hover { border-color: var(--accent); }
+
+    .install-cmd::before {
+      content: "$";
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .copy-btn:hover { color: var(--accent); }
+    .copy-btn svg { width: 16px; height: 16px; }
+
+    .copy-tooltip {
+      position: absolute;
+      top: -32px;
+      right: 8px;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 12px;
+      font-family: -apple-system, sans-serif;
+      padding: 4px 10px;
+      border-radius: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .copy-tooltip.show { opacity: 1; }
+
+    /* Features */
+    .features {
+      padding: 40px 0 60px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Usage */
+    .usage {
+      padding: 20px 0 60px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 13.5px;
+      line-height: 1.7;
+      overflow-x: auto;
+      color: var(--text);
+    }
+
+    .code-block .comment { color: var(--muted); }
+    .code-block .flag { color: var(--accent); }
+    .code-block .string { color: #e17055; }
+
+    @media (prefers-color-scheme: dark) {
+      .code-block .string { color: #fab387; }
+    }
+
+    /* Options table */
+    .options {
+      padding: 0 0 60px;
+    }
+
+    .options-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .options-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .options-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .options-table tr:last-child td { border-bottom: none; }
+
+    .options-table code {
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 13px;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    .options-table .desc { color: var(--muted); }
+
+    /* Formats */
+    .formats {
+      padding: 0 0 60px;
+    }
+
+    .format-tags {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .format-tag {
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .format-tag span {
+      font-family: -apple-system, sans-serif;
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .hero { padding: 60px 0 40px; }
+      .hero h1 { font-size: 36px; }
+      .hero .tagline { font-size: 17px; }
+      .install-cmd { font-size: 12px; padding: 12px 16px; }
+      .options-table { font-size: 13px; }
+      .options-table th, .options-table td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <span class="hero-icon" aria-hidden="true">&#x1F4BF;</span>
+      <h1>mkdmg</h1>
+      <p class="tagline">The Fancy Apple Disk Image Creator</p>
+      <p class="description">
+        A powerful, modern CLI wrapper around <code>hdiutil</code> that makes creating,
+        signing, and notarizing macOS Disk Images effortless.
+      </p>
+      <div class="buttons">
+        <a href="https://github.com/alessio/mkdmg/releases" class="btn btn-primary">
+          <svg viewBox="0 0 16 16"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg>
+          Download
+        </a>
+        <a href="https://github.com/alessio/mkdmg" class="btn btn-secondary">
+          <svg viewBox="0 0 16 16"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <div class="install-box">
+        <div class="install-cmd" onclick="copyInstall(this)">
+          go install al.essio.dev/cmd/mkdmg@latest
+          <button class="copy-btn" aria-label="Copy to clipboard">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25ZM5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
+          </button>
+          <span class="copy-tooltip">Copied!</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container">
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">&#x1F680;</span>
+          <h3>Simple</h3>
+          <p>Create DMGs with a single command. No complex workflows needed.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#x2699;&#xFE0F;</span>
+          <h3>Configurable</h3>
+          <p>JSON configuration support for reproducible, automated builds.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#x1F4E6;</span>
+          <h3>Multiple Formats</h3>
+          <p>Supports UDZO, UDBZ, ULFO, and ULMO disk image formats.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#x1F510;</span>
+          <h3>Code Signing</h3>
+          <p>Integrated codesigning and notarization workflow built in.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#x1F5A5;&#xFE0F;</span>
+          <h3>Filesystems</h3>
+          <p>Full support for both HFS+ and APFS filesystems.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">&#x1F6E1;&#xFE0F;</span>
+          <h3>Sandbox Safe</h3>
+          <p>Create disk images that are safe for sandboxed applications.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Usage -->
+  <section class="usage">
+    <div class="container">
+      <h2 class="section-title">Quick Start</h2>
+      <div class="code-block">
+        <span class="comment"># Create a DMG from a directory</span><br>
+        mkdmg <span class="flag">--volname</span> <span class="string">"My App v1.0"</span> <span class="string">"My App.dmg"</span> ./build<br>
+        <br>
+        <span class="comment"># Use a JSON config for reproducible builds</span><br>
+        mkdmg <span class="flag">--config</span> config.json<br>
+        <br>
+        <span class="comment"># Set a custom size and sign the image</span><br>
+        mkdmg <span class="flag">--disk-image-size</span> 100 <span class="flag">--codesign</span> <span class="string">"Developer ID"</span> out.dmg ./dist<br>
+        <br>
+        <span class="comment"># Dry run to preview commands</span><br>
+        mkdmg <span class="flag">--dry-run</span> <span class="flag">--verbose</span> out.dmg ./dist
+      </div>
+    </div>
+  </section>
+
+  <!-- Options -->
+  <section class="options">
+    <div class="container">
+      <h2 class="section-title">Options</h2>
+      <div style="overflow-x: auto; border-radius: 12px;">
+        <table class="options-table">
+          <thead>
+            <tr><th>Flag</th><th>Description</th><th>Default</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>--config</code></td><td class="desc">Path to a JSON configuration file</td><td><code>""</code></td></tr>
+            <tr><td><code>--volname</code></td><td class="desc">Set the volume name for the DMG</td><td>filename</td></tr>
+            <tr><td><code>--disk-image-size</code></td><td class="desc">Set the DMG size in megabytes</td><td><code>0</code></td></tr>
+            <tr><td><code>--codesign</code></td><td class="desc">Signing identity for code signing</td><td><code>""</code></td></tr>
+            <tr><td><code>--notarize</code></td><td class="desc">Keychain credentials for notarization</td><td><code>""</code></td></tr>
+            <tr><td><code>--format</code></td><td class="desc">DMG format (UDZO, UDBZ, ULFO, ULMO)</td><td><code>UDZO</code></td></tr>
+            <tr><td><code>--apfs</code></td><td class="desc">Use APFS filesystem</td><td><code>false</code></td></tr>
+            <tr><td><code>--bless</code></td><td class="desc">Bless the disk image</td><td><code>false</code></td></tr>
+            <tr><td><code>--sandbox-safe</code></td><td class="desc">Create a sandbox-safe DMG</td><td><code>false</code></td></tr>
+            <tr><td><code>--dry-run</code></td><td class="desc">Simulate without creating files</td><td><code>false</code></td></tr>
+            <tr><td><code>--verbose</code></td><td class="desc">Enable verbose output</td><td><code>false</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Formats -->
+  <section class="formats">
+    <div class="container">
+      <h2 class="section-title">Supported Formats</h2>
+      <div class="format-tags">
+        <div class="format-tag">UDZO <span>zlib</span></div>
+        <div class="format-tag">UDBZ <span>bzip2</span></div>
+        <div class="format-tag">ULFO <span>lzfse</span></div>
+        <div class="format-tag">ULMO <span>lzma</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      Made with care by <a href="https://github.com/alessio">Alessio Treglia</a><br>
+      <a href="https://pkg.go.dev/al.essio.dev/cmd/mkdmg">GoDoc</a> &middot;
+      <a href="https://github.com/alessio/mkdmg/releases">Releases</a> &middot;
+      <a href="https://github.com/alessio/mkdmg/blob/main/LICENSE">License</a>
+    </div>
+  </footer>
+
+  <script>
+    function copyInstall(el) {
+      const text = 'go install al.essio.dev/cmd/mkdmg@latest';
+      navigator.clipboard.writeText(text).then(() => {
+        const tooltip = el.querySelector('.copy-tooltip');
+        tooltip.classList.add('show');
+        setTimeout(() => tooltip.classList.remove('show'), 1500);
+      });
+    }
+  </script>
+</body>
+</html>
