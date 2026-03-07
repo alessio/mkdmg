@@ -419,7 +419,7 @@
         <div class="feature-card">
           <span class="feature-icon">&#x1F680;</span>
           <h3>Simple</h3>
-          <p>Create DMGs with a single command. No complex workflows needed.</p>
+          <p>Create DMGs with a single command. Just provide a JSON config file.</p>
         </div>
         <div class="feature-card">
           <span class="feature-icon">&#x2699;&#xFE0F;</span>
@@ -455,17 +455,17 @@
     <div class="container">
       <h2 class="section-title">Quick Start</h2>
       <div class="code-block">
-        <span class="comment"># Create a DMG from a directory</span><br>
-        mkdmg <span class="flag">--volname</span> <span class="string">"My App v1.0"</span> <span class="string">"My App.dmg"</span> ./build<br>
+        <span class="comment"># Run with default config (mkdmg.json in current directory)</span><br>
+        mkdmg<br>
         <br>
-        <span class="comment"># Use a JSON config for reproducible builds</span><br>
-        mkdmg <span class="flag">--config</span> config.json<br>
+        <span class="comment"># Override output path and source directory</span><br>
+        mkdmg <span class="string">MyApp.dmg</span> ./build<br>
         <br>
-        <span class="comment"># Set a custom size and sign the image</span><br>
-        mkdmg <span class="flag">--disk-image-size</span> 100 <span class="flag">--codesign</span> <span class="string">"Developer ID"</span> out.dmg ./dist<br>
+        <span class="comment"># Use a specific JSON config file</span><br>
+        mkdmg <span class="flag">--config</span> path/to/config.json<br>
         <br>
         <span class="comment"># Dry run to preview commands</span><br>
-        mkdmg <span class="flag">--dry-run</span> <span class="flag">--verbose</span> out.dmg ./dist
+        mkdmg <span class="flag">--dry-run</span> <span class="flag">--verbose</span>
       </div>
     </div>
   </section>
@@ -480,17 +480,11 @@
             <tr><th>Flag</th><th>Description</th><th>Default</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>--config</code></td><td class="desc">Path to a JSON configuration file</td><td><code>""</code></td></tr>
-            <tr><td><code>--volname</code></td><td class="desc">Set the volume name for the DMG</td><td>filename</td></tr>
-            <tr><td><code>--disk-image-size</code></td><td class="desc">Set the DMG size in megabytes</td><td><code>0</code></td></tr>
-            <tr><td><code>--codesign</code></td><td class="desc">Signing identity for code signing</td><td><code>""</code></td></tr>
-            <tr><td><code>--notarize</code></td><td class="desc">Keychain credentials for notarization</td><td><code>""</code></td></tr>
-            <tr><td><code>--format</code></td><td class="desc">DMG format (UDZO, UDBZ, ULFO, ULMO)</td><td><code>UDZO</code></td></tr>
-            <tr><td><code>--apfs</code></td><td class="desc">Use APFS filesystem</td><td><code>false</code></td></tr>
-            <tr><td><code>--bless</code></td><td class="desc">Bless the disk image</td><td><code>false</code></td></tr>
-            <tr><td><code>--sandbox-safe</code></td><td class="desc">Create a sandbox-safe DMG</td><td><code>false</code></td></tr>
-            <tr><td><code>--dry-run</code></td><td class="desc">Simulate without creating files</td><td><code>false</code></td></tr>
-            <tr><td><code>--verbose</code></td><td class="desc">Enable verbose output</td><td><code>false</code></td></tr>
+            <tr><td><code>--config</code></td><td class="desc">Path to a JSON configuration file</td><td><code>mkdmg.json</code></td></tr>
+            <tr><td><code>--dry-run</code>, <code>-s</code></td><td class="desc">Simulate without creating files</td><td><code>false</code></td></tr>
+            <tr><td><code>--verbose</code>, <code>-v</code></td><td class="desc">Enable verbose output</td><td><code>false</code></td></tr>
+            <tr><td><code>--version</code>, <code>-V</code></td><td class="desc">Print version information and exit</td><td></td></tr>
+            <tr><td><code>--help</code>, <code>-h</code></td><td class="desc">Display the help message and exit</td><td></td></tr>
           </tbody>
         </table>
       </div>
