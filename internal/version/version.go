@@ -1,6 +1,9 @@
 package version
 
-import _ "embed"
+import (
+	_ "embed"
+	"strings"
+)
 
 //go:generate bash generate_version.sh
 //go:embed version.txt
@@ -8,5 +11,5 @@ var version string
 
 // Version returns the version string.
 func Version() string {
-	return version
+	return strings.TrimSpace(version)
 }
