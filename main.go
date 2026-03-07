@@ -41,8 +41,6 @@ func init() {
 	flag.Usage = usage
 
 	verboseLog = log.New(io.Discard, "mkdmg: ", 0)
-
-	flag.CommandLine.SetOutput(os.Stderr)
 }
 
 func main() {
@@ -76,10 +74,6 @@ func run() error {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	if isFlagPassed("dry-run") || isFlagPassed("s") {
-		cfg.Simulate = simulate
-	}
-
 	switch flag.NArg() {
 	case 2:
 		cfg.OutputPath = flag.Arg(0)
@@ -98,6 +92,7 @@ func run() error {
 	}
 
 	runner := hdiutil.New(cfg)
+	runner.SetSimulate(simulate)
 	if err := runner.Setup(); err != nil {
 		return fmt.Errorf("failed to setup: %v", err)
 	}
