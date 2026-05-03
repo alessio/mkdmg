@@ -99,25 +99,25 @@ func run() error {
 	defer runner.Cleanup()
 
 	if err := runner.Start(); err != nil {
-		return err
+		return fmt.Errorf("failed to start: %v", err)
 	}
 	if err := runner.AttachDiskImage(); err != nil {
-		return err
+		return fmt.Errorf("failed to attach disk image: %v", err)
 	}
 	if err := runner.Bless(); err != nil {
-		return err
+		return fmt.Errorf("failed to bless: %v", err)
 	}
 	if err := runner.DetachDiskImage(); err != nil {
-		return err
+		return fmt.Errorf("failed to detach disk image: %v", err)
 	}
 	if err := runner.FinalizeDMG(); err != nil {
-		return err
+		return fmt.Errorf("failed to finalize dmg: %v", err)
 	}
 	if err := runner.Codesign(); err != nil {
-		return err
+		return fmt.Errorf("failed to sign: %v", err)
 	}
 	if err := runner.Notarize(); err != nil {
-		return err
+		return fmt.Errorf("failed to notarize: %v", err)
 	}
 
 	verboseLog.Printf("DMG created successfully: %s\n", runner.OutputPath)
