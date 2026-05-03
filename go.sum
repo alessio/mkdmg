@@ -1,2 +1,2 @@
-al.essio.dev/pkg/hdiutil v0.1.1-0.20260307073641-fbc4718da097 h1:WTUehdo4keiIO+f46WnY6L2hA8FwBpDSBuQdmnBr5XU=
-al.essio.dev/pkg/hdiutil v0.1.1-0.20260307073641-fbc4718da097/go.mod h1:p7HBuu5IhFqjMCxrFnZ7/GBCWTMRTRmuLJEk7kIlhJo=
+al.essio.dev/pkg/hdiutil v0.2.1 h1:M/WI1epNi3QYJa4RQthIXSo8BsHK5fSNNSRKXkZppWQ=
+al.essio.dev/pkg/hdiutil v0.2.1/go.mod h1:p7HBuu5IhFqjMCxrFnZ7/GBCWTMRTRmuLJEk7kIlhJo=
