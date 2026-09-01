@@ -265,6 +265,14 @@ func TestRunPositionalOutputAndSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run() with positional output and source: %v", err)
 	}
+
+	// Cover missing-default configuration path without --config in a directory with no mkdmg.json
+	t.Chdir(t.TempDir())
+	resetForTest(t, []string{"mkdmg", "--dry-run", outputDMG, sourceDir})
+	err = run()
+	if err != nil {
+		t.Fatalf("run() without --config and missing default mkdmg.json: %v", err)
+	}
 }
 
 func TestRunPositionalOutputOnly(t *testing.T) {
