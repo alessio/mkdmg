@@ -120,70 +120,91 @@ func run() error {
 		attached bool
 	)
 
+	// withRunner serializes a runner operation against the signal handler's
+	// shutdown sequence, so temporary files are never removed while an
+	// external command is still using them.
+	withRunner := func(op func() error) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return op()
+	}
+
+	// detach unmounts the disk image if it is still attached. The caller must
+	// hold mu.
+	detach := func() error {
+		if !attached {
+			return nil
+		}
+		if err := runner.DetachDiskImage(); err != nil {
+			return err
+		}
+		attached = false
+		return nil
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
-	done := make(chan struct{})
-	defer close(done)
+	// Cleanup only removes the temporary directory, so the disk image has to be
+	// detached explicitly on every path out of run().
+	defer func() {
+		_ = withRunner(detach)
+	}()
 
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		select {
 		case <-sigChan:
 			verboseLog.Println("Caught interrupt signal, cleaning up...")
 			mu.Lock()
-			defer mu.Unlock()
-			if attached {
-				_ = runner.DetachDiskImage()
-				attached = false
-			}
+			_ = detach()
 			runner.Cleanup()
+			mu.Unlock()
 			os.Exit(130)
 		case <-done:
 			return
 		}
 	}()
+	// Wait for the listener to return so it can never run concurrently with the
+	// deferred detach and Cleanup below.
+	defer func() {
+		close(done)
+		wg.Wait()
+	}()
 
-	if err := runner.Start(); err != nil {
+	if err := withRunner(runner.Start); err != nil {
 		return fmt.Errorf("failed to start: %v", err)
 	}
 
-	mu.Lock()
-	err = runner.AttachDiskImage()
-	if err == nil {
+	if err := withRunner(func() error {
+		if err := runner.AttachDiskImage(); err != nil {
+			return err
+		}
 		attached = true
-	}
-	mu.Unlock()
-	if err != nil {
+		return nil
+	}); err != nil {
 		return fmt.Errorf("failed to attach disk image: %v", err)
 	}
 
-	mu.Lock()
-	err = runner.Bless()
-	mu.Unlock()
-	if err != nil {
+	if err := withRunner(runner.Bless); err != nil {
 		return fmt.Errorf("failed to bless: %v", err)
 	}
 
-	mu.Lock()
-	if attached {
-		err = runner.DetachDiskImage()
-		if err == nil {
-			attached = false
-		}
-	}
-	mu.Unlock()
-	if err != nil {
+	if err := withRunner(detach); err != nil {
 		return fmt.Errorf("failed to detach disk image: %v", err)
 	}
 
-	if err := runner.FinalizeDMG(); err != nil {
+	if err := withRunner(runner.FinalizeDMG); err != nil {
 		return fmt.Errorf("failed to finalize dmg: %v", err)
 	}
-	if err := runner.Codesign(); err != nil {
+	if err := withRunner(runner.Codesign); err != nil {
 		return fmt.Errorf("failed to sign: %v", err)
 	}
-	if err := runner.Notarize(); err != nil {
+	if err := withRunner(runner.Notarize); err != nil {
 		return fmt.Errorf("failed to notarize: %v", err)
 	}
 
