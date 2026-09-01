@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 
 	"al.essio.dev/cmd/mkdmg/internal/version"
@@ -114,27 +115,68 @@ func run() error {
 	}
 	defer runner.Cleanup()
 
+	var (
+		mu       sync.Mutex
+		attached bool
+	)
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigChan)
+
+	done := make(chan struct{})
+	defer close(done)
+
 	go func() {
-		<-sigChan
-		verboseLog.Println("Caught interrupt signal, cleaning up...")
-		runner.Cleanup()
-		os.Exit(130)
+		select {
+		case <-sigChan:
+			verboseLog.Println("Caught interrupt signal, cleaning up...")
+			mu.Lock()
+			defer mu.Unlock()
+			if attached {
+				_ = runner.DetachDiskImage()
+				attached = false
+			}
+			runner.Cleanup()
+			os.Exit(130)
+		case <-done:
+			return
+		}
 	}()
 
 	if err := runner.Start(); err != nil {
 		return fmt.Errorf("failed to start: %v", err)
 	}
-	if err := runner.AttachDiskImage(); err != nil {
+
+	mu.Lock()
+	err = runner.AttachDiskImage()
+	if err == nil {
+		attached = true
+	}
+	mu.Unlock()
+	if err != nil {
 		return fmt.Errorf("failed to attach disk image: %v", err)
 	}
-	if err := runner.Bless(); err != nil {
+
+	mu.Lock()
+	err = runner.Bless()
+	mu.Unlock()
+	if err != nil {
 		return fmt.Errorf("failed to bless: %v", err)
 	}
-	if err := runner.DetachDiskImage(); err != nil {
+
+	mu.Lock()
+	if attached {
+		err = runner.DetachDiskImage()
+		if err == nil {
+			attached = false
+		}
+	}
+	mu.Unlock()
+	if err != nil {
 		return fmt.Errorf("failed to detach disk image: %v", err)
 	}
+
 	if err := runner.FinalizeDMG(); err != nil {
 		return fmt.Errorf("failed to finalize dmg: %v", err)
 	}
