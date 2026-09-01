@@ -6,7 +6,6 @@
 
 [![Go](https://github.com/alessio/mkdmg/actions/workflows/go.yml/badge.svg)](https://github.com/alessio/mkdmg/actions/workflows/go.yml)
 [![GoDoc](https://godoc.org/al.essio.dev/cmd/mkdmg?status.svg)](https://pkg.go.dev/al.essio.dev/cmd/mkdmg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/alessio/mkdmg)](https://goreportcard.com/report/github.com/alessio/mkdmg)
 [![License](https://img.shields.io/github/license/alessio/mkdmg.svg)](https://github.com/alessio/mkdmg/blob/main/LICENSE)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/alessio/mkdmg)](https://github.com/alessio/mkdmg/releases)
 
