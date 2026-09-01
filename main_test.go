@@ -237,8 +237,8 @@ func TestRunDefaultConfig(t *testing.T) {
 	if err == nil {
 		t.Fatal("run() with default config (mkdmg.json not present) should return an error")
 	}
-	if !strings.Contains(err.Error(), "failed to load config") {
-		t.Errorf("error = %q, want it to contain 'failed to load config'", err)
+	if !strings.Contains(err.Error(), "missing output path or source directory") {
+		t.Errorf("error = %q, want it to contain 'missing output path or source directory'", err)
 	}
 }
 
@@ -259,10 +259,8 @@ func TestRunTooManyPositionalArgs(t *testing.T) {
 func TestRunPositionalOutputAndSource(t *testing.T) {
 	sourceDir := t.TempDir()
 	outputDMG := filepath.Join(t.TempDir(), "test.dmg")
-	cfgFile := writeConfigFile(t, map[string]any{
-		"simulate": true,
-	})
-	resetForTest(t, []string{"mkdmg", "--config", cfgFile, outputDMG, sourceDir})
+	cfgFile := writeConfigFile(t, map[string]any{})
+	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--dry-run", outputDMG, sourceDir})
 	err := run()
 	if err != nil {
 		t.Fatalf("run() with positional output and source: %v", err)
@@ -274,9 +272,8 @@ func TestRunPositionalOutputOnly(t *testing.T) {
 	sourceDir := t.TempDir()
 	cfgFile := writeConfigFile(t, map[string]any{
 		"source_dir": sourceDir,
-		"simulate":   true,
 	})
-	resetForTest(t, []string{"mkdmg", "--config", cfgFile, outputDMG})
+	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--dry-run", outputDMG})
 	err := run()
 	if err != nil {
 		t.Fatalf("run() with positional output only: %v", err)
@@ -289,9 +286,8 @@ func TestRunPositionalOverridesConfig(t *testing.T) {
 	cfgFile := writeConfigFile(t, map[string]any{
 		"output_path": "original.dmg",
 		"source_dir":  "/original/src",
-		"simulate":    true,
 	})
-	resetForTest(t, []string{"mkdmg", "--config", cfgFile, outputDMG, sourceDir})
+	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--dry-run", outputDMG, sourceDir})
 	err := run()
 	if err != nil {
 		t.Fatalf("run() with positional overrides: %v", err)
@@ -315,9 +311,8 @@ func TestRunConfigFileDryRun(t *testing.T) {
 	cfgFile := writeConfigFile(t, map[string]any{
 		"output_path": outputDMG,
 		"source_dir":  sourceDir,
-		"simulate":    true,
 	})
-	resetForTest(t, []string{"mkdmg", "--config", cfgFile})
+	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--dry-run"})
 	err := run()
 	if err != nil {
 		t.Fatalf("run() with valid config (dry-run): %v", err)
@@ -389,9 +384,8 @@ func TestRunVerboseModeDryRun(t *testing.T) {
 	cfgFile := writeConfigFile(t, map[string]any{
 		"output_path": outputDMG,
 		"source_dir":  sourceDir,
-		"simulate":    true,
 	})
-	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--verbose"})
+	resetForTest(t, []string{"mkdmg", "--config", cfgFile, "--verbose", "--dry-run"})
 	err := run()
 	if err != nil {
 		t.Fatalf("run() with --verbose --dry-run: %v", err)

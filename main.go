@@ -6,7 +6,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"al.essio.dev/cmd/mkdmg/internal/version"
 	"al.essio.dev/pkg/hdiutil"
@@ -69,9 +71,23 @@ func run() error {
 		return fmt.Errorf("too many positional arguments")
 	}
 
-	cfg, err := loadConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+	var cfg *hdiutil.Config
+	var err error
+
+	if isFlagPassed("config") {
+		cfg, err = loadConfig(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %v", err)
+		}
+	} else {
+		cfg, err = loadConfig(configPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				cfg = &hdiutil.Config{}
+			} else {
+				return fmt.Errorf("failed to load config: %v", err)
+			}
+		}
 	}
 
 	switch flag.NArg() {
@@ -97,6 +113,15 @@ func run() error {
 		return fmt.Errorf("failed to setup: %v", err)
 	}
 	defer runner.Cleanup()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		verboseLog.Println("Caught interrupt signal, cleaning up...")
+		runner.Cleanup()
+		os.Exit(130)
+	}()
 
 	if err := runner.Start(); err != nil {
 		return fmt.Errorf("failed to start: %v", err)
